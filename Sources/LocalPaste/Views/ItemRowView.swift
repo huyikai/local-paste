@@ -1,0 +1,70 @@
+import SwiftUI
+
+struct ItemRowView: View {
+    @EnvironmentObject var appState: AppState
+    let item: ClipboardItem
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Type icon
+            Image(systemName: item.contentTypeIcon)
+                .foregroundColor(.secondary)
+                .frame(width: 20)
+
+            // Preview
+            VStack(alignment: .leading, spacing: 2) {
+                if let image = item.image {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 60)
+                        .cornerRadius(4)
+                } else {
+                    Text(item.displayText)
+                        .lineLimit(2)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                }
+
+                HStack(spacing: 4) {
+                    Text(item.timestamp, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    if item.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            }
+
+            Spacer()
+
+            // Pin button
+            Button(action: { appState.togglePin(for: item) }) {
+                Image(systemName: item.isPinned ? "pin.fill" : "pin")
+                    .foregroundColor(item.isPinned ? .accentColor : .secondary.opacity(0.3))
+            }
+            .buttonStyle(.plain)
+            .help(item.isPinned ? "Unpin" : "Pin")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            appState.copyItemToPasteboard(item)
+        }
+        .contextMenu {
+            Button(action: { appState.copyItemToPasteboard(item) }) {
+                Label("Paste", systemImage: "doc.on.clipboard")
+            }
+            Button(action: { appState.togglePin(for: item) }) {
+                Label(item.isPinned ? "Unpin" : "Pin", systemImage: "pin")
+            }
+            Divider()
+            Button(role: .destructive, action: { appState.deleteItem(item) }) {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+}

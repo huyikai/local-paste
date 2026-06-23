@@ -1,0 +1,20 @@
+# Swift PM
+.build/
+.build-arm64/
+.build-x86_64/
+Packages/
+*.xcodeproj/
+*.xcworkspace/
+
+# macOS
+.DS_Store
+*.app
+*.dSYM.zip
+*.dSYM
+
+# Build artifacts
+DerivedData/
+
+# Reasonix tool config
+.reasonix/
+reasonix.toml
