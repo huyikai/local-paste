@@ -10,8 +10,15 @@ struct ClipboardItem: Identifiable, Hashable {
     let data: [String: Data]
     /// The application name that provided the content (if available).
     let appName: String?
+    /// The source application icon as PNG data (if available).
+    let appIconData: Data?
     /// Whether the user has pinned this item.
     var isPinned: Bool
+
+    var appIcon: NSImage? {
+        guard let data = appIconData else { return nil }
+        return NSImage(data: data)
+    }
 
     // MARK: - Convenience accessors
 

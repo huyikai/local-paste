@@ -45,11 +45,14 @@ final class PasteboardManager {
             return nil
         }
 
+        let (name, iconData) = frontmostAppInfo()
+
         let item = ClipboardItem(
             id: UUID(),
             timestamp: Date(),
             data: dataMap,
-            appName: appName ?? getFrontmostAppName(),
+            appName: appName ?? name,
+            appIconData: iconData,
             isPinned: false
         )
         return item
@@ -60,11 +63,14 @@ final class PasteboardManager {
         let dataMap = pasteboard.readAllTypes()
         guard !dataMap.isEmpty else { return nil }
 
+        let (name, iconData) = frontmostAppInfo()
+
         return ClipboardItem(
             id: UUID(),
             timestamp: Date(),
             data: dataMap,
-            appName: getFrontmostAppName(),
+            appName: name,
+            appIconData: iconData,
             isPinned: false
         )
     }
@@ -90,6 +96,24 @@ final class PasteboardManager {
 
     /// Get the name of the currently frontmost (active) application.
     private func getFrontmostAppName() -> String? {
-        NSWorkspace.shared.frontmostApplication?.localizedName
+        frontmostAppInfo().0
+    }
+
+    /// Capture the frontmost application name and icon PNG data.
+    private func frontmostAppInfo() -> (String?, Data?) {
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            return (nil, nil)
+        }
+        let name = app.localizedName
+        let iconData = app.icon.flatMap { icon in
+            // Render a 16x16 version for list display
+            let smallIcon = NSImage(size: NSSize(width: 16, height: 16))
+            smallIcon.lockFocus()
+            icon.draw(in: NSRect(x: 0, y: 0, width: 16, height: 16),
+                      from: .zero, operation: .copy, fraction: 1.0)
+            smallIcon.unlockFocus()
+            return smallIcon.tiffRepresentation
+        }
+        return (name, iconData)
     }
 }

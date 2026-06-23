@@ -6,10 +6,17 @@ struct ItemRowView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            // Type icon
-            Image(systemName: item.contentTypeIcon)
-                .foregroundColor(.secondary)
-                .frame(width: 20)
+            // App icon
+            if let icon = item.appIcon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 16, height: 16)
+                    .cornerRadius(3)
+            } else {
+                Image(systemName: item.contentTypeIcon)
+                    .foregroundColor(.secondary)
+                    .frame(width: 16)
+            }
 
             // Preview
             VStack(alignment: .leading, spacing: 2) {
@@ -67,6 +74,14 @@ struct ItemRowView: View {
         .contextMenu {
             Button(action: { appState.copyItemToPasteboard(item) }) {
                 Label("Paste", systemImage: "doc.on.clipboard")
+            }
+            if item.plainText != nil {
+                Button(action: {
+                    appState.selectedItemID = item.id
+                    appState.pasteSelectedAsPlainText()
+                }) {
+                    Label("Paste as Plain Text", systemImage: "text.alignleft")
+                }
             }
             Button(action: { appState.togglePin(for: item) }) {
                 Label(item.isPinned ? "Unpin" : "Pin", systemImage: "pin")

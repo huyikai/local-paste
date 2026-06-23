@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 
 /// Shared application state that flows through the environment.
 final class AppState: ObservableObject {
@@ -67,6 +68,40 @@ final class AppState: ObservableObject {
               let item = items.first(where: { $0.id == id }) else { return }
         copyItemToPasteboard(item)
         dismissFloatingPanel()
+    }
+
+    // MARK: - Multi-select & batch operations
+
+    /// IDs of items currently multi-selected (via Cmd/Shift+click in List).
+    @Published var selectedItemIDs: Set<UUID> = []
+
+    /// Paste the selected item as plain text only (⌘⇧V).
+    func pasteSelectedAsPlainText() {
+        guard let id = selectedItemID,
+              let item = items.first(where: { $0.id == id }),
+              let text = item.plainText else { return }
+
+        pasteboardManager.writeData([UTType.utf8PlainText.identifier: text.data(using: .utf8)!])
+
+        if let idx = items.firstIndex(where: { $0.id == item.id }) {
+            var refreshed = items.remove(at: idx)
+            refreshed.timestamp = Date()
+            insertSorted(refreshed)
+            saveToDisk()
+        }
+    }
+
+    /// Delete all currently multi-selected items.
+    func deleteSelectedItems() {
+        items.removeAll { selectedItemIDs.contains($0.id) }
+        selectedItemIDs.removeAll()
+        saveToDisk()
+    }
+
+    /// Move items for drag-to-reorder.
+    func moveItems(from source: IndexSet, to destination: Int) {
+        items.move(fromOffsets: source, toOffset: destination)
+        saveToDisk()
     }
 
     /// Select the first item (called when panel opens).

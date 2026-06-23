@@ -9,9 +9,16 @@ struct LocalPasteApp: App {
             MenuBarView()
                 .environmentObject(appState)
         } label: {
-            // Use a system image for the menu bar icon
-            Image(systemName: "clipboard")
-                .environmentObject(appState)
+            if appState.items.isEmpty {
+                Image(systemName: "clipboard")
+            } else {
+                HStack(spacing: 1) {
+                    Image(systemName: "clipboard")
+                    Text("\(min(appState.items.count, 99))")
+                        .font(.caption2.weight(.bold))
+                        .monospacedDigit()
+                }
+            }
         }
         .menuBarExtraStyle(.window)
 

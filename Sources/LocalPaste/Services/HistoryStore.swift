@@ -11,6 +11,7 @@ final class HistoryStore {
         let timestamp: Date
         let data: [String: Data]
         let appName: String?
+        let appIconData: Data?
         let isPinned: Bool
 
         init(from item: ClipboardItem) {
@@ -18,6 +19,7 @@ final class HistoryStore {
             self.timestamp = item.timestamp
             self.data = item.data
             self.appName = item.appName
+            self.appIconData = item.appIconData
             self.isPinned = item.isPinned
         }
 
@@ -27,6 +29,7 @@ final class HistoryStore {
                 timestamp: timestamp,
                 data: data,
                 appName: appName,
+                appIconData: appIconData,
                 isPinned: isPinned
             )
         }

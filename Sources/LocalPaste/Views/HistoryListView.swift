@@ -4,22 +4,19 @@ struct HistoryListView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 1) {
-                    ForEach(appState.filteredItems) { item in
-                        ItemRowView(item: item)
-                            .environmentObject(appState)
-                            .id(item.id)
-                    }
-                }
-                .padding(.vertical, 4)
+        List(selection: $appState.selectedItemIDs) {
+            ForEach(appState.filteredItems) { item in
+                ItemRowView(item: item)
+                    .environmentObject(appState)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+                    .listRowSeparator(.hidden)
             }
-            .onChange(of: appState.selectedItemID) { newID in
-                guard let id = newID else { return }
-                withAnimation {
-                    proxy.scrollTo(id, anchor: .center)
-                }
+            .onMove(perform: appState.moveItems)
+        }
+        .listStyle(.plain)
+        .onChange(of: appState.selectedItemID) { newID in
+            if let id = newID {
+                appState.selectedItemIDs = [id]
             }
         }
     }
