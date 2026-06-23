@@ -37,8 +37,6 @@ final class PasteboardManager {
 
     /// Read the current pasteboard contents and create a ClipboardItem.
     func captureCurrentContent(appName: String? = nil) -> ClipboardItem? {
-        guard hasChanged else { return nil }
-
         let dataMap = pasteboard.readAllTypes()
         guard !dataMap.isEmpty else { return nil }
 
