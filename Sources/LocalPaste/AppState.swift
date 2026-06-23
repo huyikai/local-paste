@@ -65,6 +65,20 @@ final class AppState: ObservableObject {
               let item = items.first(where: { $0.id == id }) else { return }
         copyItemToPasteboard(item)
         dismissFloatingPanel()
+
+        // Simulate ⌘V to paste into the previously active application
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let source = CGEventSource(stateID: .combinedSessionState)
+            let vKey: CGKeyCode = 9 // V key
+
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
+            keyDown?.flags = .maskCommand
+            keyDown?.post(tap: .cghidEventTap)
+
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
+            keyUp?.flags = .maskCommand
+            keyUp?.post(tap: .cghidEventTap)
+        }
     }
 
     /// Select the first item (called when panel opens).
