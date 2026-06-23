@@ -51,6 +51,16 @@ struct ItemRowView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .contentShape(Rectangle())
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(appState.selectedItemID == item.id
+                      ? Color.accentColor.opacity(0.15)
+                      : Color.clear)
+                .padding(2)
+        )
+        .onTapGesture {
+            appState.selectedItemID = item.id
+        }
         .onTapGesture(count: 2) {
             appState.copyItemToPasteboard(item)
         }

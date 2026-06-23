@@ -32,6 +32,51 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Selection (keyboard navigation)
+
+    /// The currently highlighted item ID, or nil if none.
+    @Published var selectedItemID: UUID?
+
+    /// Select the next item in `filteredItems`.
+    func selectNext() {
+        guard let current = selectedItemID else {
+            selectedItemID = filteredItems.first?.id
+            return
+        }
+        guard let idx = filteredItems.firstIndex(where: { $0.id == current }),
+              idx + 1 < filteredItems.count else { return }
+        selectedItemID = filteredItems[idx + 1].id
+    }
+
+    /// Select the previous item in `filteredItems`.
+    func selectPrevious() {
+        guard let current = selectedItemID else {
+            selectedItemID = filteredItems.first?.id
+            return
+        }
+        guard let idx = filteredItems.firstIndex(where: { $0.id == current }),
+              idx > 0 else { return }
+        selectedItemID = filteredItems[idx - 1].id
+    }
+
+    /// Paste the currently selected item and dismiss the panel.
+    func pasteSelected() {
+        guard let id = selectedItemID,
+              let item = items.first(where: { $0.id == id }) else { return }
+        copyItemToPasteboard(item)
+        dismissFloatingPanel()
+    }
+
+    /// Select the first item (called when panel opens).
+    func selectFirstItem() {
+        selectedItemID = filteredItems.first?.id
+    }
+
+    /// Clear the selection (called when panel closes).
+    func clearSelection() {
+        selectedItemID = nil
+    }
+
     // MARK: - Services
 
     let pasteboardManager: PasteboardManager
@@ -95,8 +140,18 @@ final class AppState: ObservableObject {
         if floatingPanel == nil {
             floatingPanel = FloatingHistoryPanel(appState: self)
         }
-        // Sync search query
         floatingPanel?.toggle()
+        if floatingPanel?.isVisible == true {
+            selectFirstItem()
+        } else {
+            clearSelection()
+        }
+    }
+
+    /// Dismiss the floating panel.
+    func dismissFloatingPanel() {
+        floatingPanel?.hide()
+        clearSelection()
     }
 
     /// Copy an item back to the system pasteboard.
@@ -127,13 +182,7 @@ final class AppState: ObservableObject {
     func togglePin(for item: ClipboardItem) {
         if let idx = items.firstIndex(where: { $0.id == item.id }) {
             items[idx].isPinned.toggle()
-            // Re-sort to move pinned items up
-            items.sort { a, b in
-                if a.isPinned != b.isPinned {
-                    return a.isPinned && !b.isPinned
-                }
-                return a.timestamp > b.timestamp
-            }
+            sortItems()
             saveToDisk()
         }
     }
@@ -141,16 +190,16 @@ final class AppState: ObservableObject {
     // MARK: - Private helpers
 
     private func insertSorted(_ item: ClipboardItem) {
-        // Find the right position: pinned items first (timestamp desc)
-        // then unpinned items (timestamp desc)
-        if item.isPinned {
-            if let firstUnpin = items.firstIndex(where: { !$0.isPinned }) {
-                items.insert(item, at: firstUnpin)
-            } else {
-                items.append(item)
+        items.append(item)
+        sortItems()
+    }
+
+    private func sortItems() {
+        items.sort { a, b in
+            if a.isPinned != b.isPinned {
+                return a.isPinned && !b.isPinned
             }
-        } else {
-            items.append(item)
+            return a.timestamp > b.timestamp
         }
     }
 
