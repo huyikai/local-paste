@@ -149,31 +149,33 @@ final class FloatingHistoryPanel: NSPanel {
         // 1. Write to pasteboard (also moves item to top)
         appState.copyItemToPasteboard(item)
 
-        // 2. Hide the panel
+        // 2. Hide panel immediately (no fade) so target app can receive events
         let previousApp = previousAppBeforePanel
-        hide()
+        hideImmediately()
         appState.clearSelection()
 
         // 3. Restore focus to the previous app, then post ⌘V
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             previousApp?.activate(options: .activateIgnoringOtherApps)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.postCommandV()
             }
         }
     }
 
     private func postCommandV() {
+        guard let targetApp = previousAppBeforePanel else { return }
+        let pid = targetApp.processIdentifier
         let source = CGEventSource(stateID: .combinedSessionState)
         let vKey: CGKeyCode = 9
 
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
         keyDown?.flags = .maskCommand
-        keyDown?.post(tap: .cghidEventTap)
+        keyDown?.postToPid(pid)
 
         let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
         keyUp?.flags = .maskCommand
-        keyUp?.post(tap: .cghidEventTap)
+        keyUp?.postToPid(pid)
     }
 
     // MARK: - Quick Look
@@ -256,17 +258,29 @@ final class FloatingHistoryPanel: NSPanel {
         }
     }
 
-    /// Hide the panel.
+    /// Hide the panel (with fade animation).
     func hide() {
+        hide(animated: true)
+    }
+
+    /// Hide the panel immediately without animation (used before paste).
+    func hideImmediately() {
+        hide(animated: false)
+    }
+
+    private func hide(animated: Bool) {
         closeQuickLookIfNeeded()
 
-        // Fade out
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.12
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            self.animator().alphaValue = 0.0
-        } completionHandler: {
-            self.orderOut(nil)
+        if animated {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.12
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                self.animator().alphaValue = 0.0
+            } completionHandler: {
+                self.orderOut(nil)
+            }
+        } else {
+            orderOut(nil)
         }
 
         removeKeyboardMonitor()
@@ -331,18 +345,23 @@ struct HistoryPanelContentView: View {
 
             Divider()
 
-            List(selection: $appState.selectedItemIDs) {
-                ForEach(appState.filteredItems) { item in
-                    ItemRowView(item: item)
-                        .environmentObject(appState)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
-                        .listRowSeparator(.hidden)
+            ScrollViewReader { proxy in
+                List(selection: $appState.selectedItemIDs) {
+                    ForEach(appState.filteredItems) { item in
+                        ItemRowView(item: item)
+                            .environmentObject(appState)
+                            .id(item.id)
+                            .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+                            .listRowSeparator(.hidden)
+                    }
+                    .onMove(perform: appState.moveItems)
                 }
-                .onMove(perform: appState.moveItems)
-            }
-            .listStyle(.plain)
-            .onChange(of: appState.selectedItemID) { newID in
-                if let id = newID {
+                .listStyle(.plain)
+                .onChange(of: appState.selectedItemID) { newID in
+                    guard let id = newID else { return }
+                    withAnimation {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
                     appState.selectedItemIDs = [id]
                 }
             }

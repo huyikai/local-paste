@@ -187,9 +187,21 @@ final class AppState: ObservableObject {
 
     /// Dismiss the floating panel.
     func dismissFloatingPanel() {
-        floatingPanel?.hide()
+        floatingPanel?.hideImmediately()
         clearSelection()
     }
+
+    #if DEBUG
+    /// Reset state for unit testing — stops monitor and clears storage.
+    func resetForTesting() {
+        monitor.stop()
+        items.removeAll()
+        selectedItemID = nil
+        selectedItemIDs.removeAll()
+        searchQuery = ""
+        store.save([])
+    }
+    #endif
 
     /// Copy an item back to the system pasteboard.
     func copyItemToPasteboard(_ item: ClipboardItem) {

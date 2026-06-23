@@ -15,6 +15,11 @@ let package = Package(
             resources: [
                 .process("Resources")
             ]
-        )
+        ),
+        .testTarget(
+            name: "LocalPasteTests",
+            dependencies: ["LocalPaste"],
+            path: "Tests/LocalPasteTests"
+        ),
     ]
 )

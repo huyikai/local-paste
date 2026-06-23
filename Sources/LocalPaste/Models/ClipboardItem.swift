@@ -90,9 +90,9 @@ struct ClipboardItem: Identifiable, Hashable {
     }
 
     var contentTypeIcon: String {
-        if image != nil { return "photo" }
-        if fileURLs != nil { return "doc" }
-        if color != nil { return "paintpalette" }
+        if data.keys.contains(where: { PasteboardTypes.imageTypes.contains($0) }) { return "photo" }
+        if data.keys.contains(where: { $0 == UTType.fileURL.identifier || $0 == "NSFilenamesPboardType" }) { return "doc" }
+        if data.keys.contains("com.apple.cocoa.pasteboard.color") { return "paintpalette" }
         return "text.alignleft"
     }
 

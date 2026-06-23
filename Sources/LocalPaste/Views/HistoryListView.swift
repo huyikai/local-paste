@@ -4,18 +4,23 @@ struct HistoryListView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        List(selection: $appState.selectedItemIDs) {
-            ForEach(appState.filteredItems) { item in
-                ItemRowView(item: item)
-                    .environmentObject(appState)
-                    .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
-                    .listRowSeparator(.hidden)
+        ScrollViewReader { proxy in
+            List(selection: $appState.selectedItemIDs) {
+                ForEach(appState.filteredItems) { item in
+                    ItemRowView(item: item)
+                        .environmentObject(appState)
+                        .id(item.id)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+                        .listRowSeparator(.hidden)
+                }
+                .onMove(perform: appState.moveItems)
             }
-            .onMove(perform: appState.moveItems)
-        }
-        .listStyle(.plain)
-        .onChange(of: appState.selectedItemID) { newID in
-            if let id = newID {
+            .listStyle(.plain)
+            .onChange(of: appState.selectedItemID) { newID in
+                guard let id = newID else { return }
+                withAnimation {
+                    proxy.scrollTo(id, anchor: .center)
+                }
                 appState.selectedItemIDs = [id]
             }
         }

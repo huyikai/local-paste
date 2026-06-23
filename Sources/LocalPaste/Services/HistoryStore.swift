@@ -44,20 +44,24 @@ final class HistoryStore {
 
     // MARK: - Init
 
-    /// - Parameter maxItems: Maximum number of history entries (oldest removed).
-    init(maxItems: Int = 200) {
+    /// Init with optional custom storage URL (for testing).
+    init(maxItems: Int = 200, storageURL: URL? = nil) {
         self.maxItems = maxItems
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory,
-                                                   in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent("LocalPaste", isDirectory: true)
+        if let storageURL = storageURL {
+            self.fileURL = storageURL
+        } else {
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                       in: .userDomainMask).first!
+            let appDir = appSupport.appendingPathComponent("LocalPaste", isDirectory: true)
 
-        // Create directory if needed
-        try? FileManager.default.createDirectory(at: appDir,
-                                                  withIntermediateDirectories: true,
-                                                  attributes: nil)
+            // Create directory if needed
+            try? FileManager.default.createDirectory(at: appDir,
+                                                      withIntermediateDirectories: true,
+                                                      attributes: nil)
 
-        self.fileURL = appDir.appendingPathComponent("history.json")
+            self.fileURL = appDir.appendingPathComponent("history.json")
+        }
 
         self.encoder = JSONEncoder()
         self.encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
