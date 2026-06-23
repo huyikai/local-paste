@@ -127,7 +127,10 @@ final class FloatingHistoryPanel: NSPanel {
             appState.selectPrevious()
             return nil
         case 36: // Enter / Return
-            performPaste(appState: appState)
+            // Defer to next run loop so keyboard monitor can clean up properly
+            DispatchQueue.main.async { [weak self] in
+                self?.performPaste(appState: appState)
+            }
             return nil
         case 49: // Space — Quick Look
             openQuickLook(appState: appState)
@@ -149,39 +152,45 @@ final class FloatingHistoryPanel: NSPanel {
         // 1. Write to pasteboard
         appState.copyItemToPasteboard(item)
 
-        // 2. Hide panel immediately
+        // 2. Save the app to restore focus to
+        let previousApp = previousAppBeforePanel
+
+        // 3. Hide panel immediately
         hideImmediately()
         appState.clearSelection()
 
-        // 3. Small delay for panel to close, then paste via osascript
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            self.postCommandV()
+        // 4. Restore focus, then paste
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Activate the app that was frontmost before our panel appeared
+            if let app = previousApp {
+                app.activate(options: .activateIgnoringOtherApps)
+            }
+            // Give it a moment to gain focus, then post Cmd+V
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                self.postCommandV()
+            }
         }
     }
 
     private func postCommandV() {
-        // Check if we have Accessibility permission
         let trusted = AXIsProcessTrusted()
+        print("LocalPaste: AXIsProcessTrusted = \(trusted)")
 
-        if trusted {
-            // Use CGEvent — works when Accessibility is granted
-            let source = CGEventSource(stateID: .combinedSessionState)
-            let vKey: CGKeyCode = 9
-            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
-            keyDown?.flags = .maskCommand
-            keyDown?.post(tap: .cghidEventTap)
-            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
-            keyUp?.flags = .maskCommand
-            keyUp?.post(tap: .cghidEventTap)
-        } else {
-            // Fallback: content is on clipboard, user must ⌘V manually
-            // Only prompt once per app launch
-            if !LocalPasteState.hasShownAccessibilityPrompt {
-                LocalPasteState.hasShownAccessibilityPrompt = true
-                DispatchQueue.main.async {
-                    self.requestAccessibilityPermission()
-                }
-            }
+        guard trusted else { return }
+
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let vKey: CGKeyCode = 9
+
+        if let down = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true) {
+            down.flags = [.maskCommand]
+            down.post(tap: .cghidEventTap)
+        }
+
+        usleep(50_000)
+
+        if let up = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false) {
+            up.flags = [.maskCommand]
+            up.post(tap: .cghidEventTap)
         }
     }
 
