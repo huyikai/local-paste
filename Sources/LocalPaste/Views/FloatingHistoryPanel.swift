@@ -146,36 +146,67 @@ final class FloatingHistoryPanel: NSPanel {
         guard let id = appState.selectedItemID,
               let item = appState.items.first(where: { $0.id == id }) else { return }
 
-        // 1. Write to pasteboard (also moves item to top)
+        // 1. Write to pasteboard
         appState.copyItemToPasteboard(item)
 
-        // 2. Hide panel immediately (no fade) so target app can receive events
-        let previousApp = previousAppBeforePanel
+        // 2. Hide panel immediately
         hideImmediately()
         appState.clearSelection()
 
-        // 3. Restore focus to the previous app, then post ⌘V
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            previousApp?.activate(options: .activateIgnoringOtherApps)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.postCommandV()
-            }
+        // 3. Small delay for panel to close, then paste via osascript
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            self.postCommandV()
         }
     }
 
     private func postCommandV() {
-        guard let targetApp = previousAppBeforePanel else { return }
-        let pid = targetApp.processIdentifier
-        let source = CGEventSource(stateID: .combinedSessionState)
-        let vKey: CGKeyCode = 9
+        // Check if we have Accessibility permission
+        let trusted = AXIsProcessTrusted()
 
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
-        keyDown?.flags = .maskCommand
-        keyDown?.postToPid(pid)
+        if trusted {
+            // Use CGEvent — works when Accessibility is granted
+            let source = CGEventSource(stateID: .combinedSessionState)
+            let vKey: CGKeyCode = 9
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
+            keyDown?.flags = .maskCommand
+            keyDown?.post(tap: .cghidEventTap)
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
+            keyUp?.flags = .maskCommand
+            keyUp?.post(tap: .cghidEventTap)
+        } else {
+            // Fallback: content is on clipboard, user must ⌘V manually
+            // Only prompt once per app launch
+            if !LocalPasteState.hasShownAccessibilityPrompt {
+                LocalPasteState.hasShownAccessibilityPrompt = true
+                DispatchQueue.main.async {
+                    self.requestAccessibilityPermission()
+                }
+            }
+        }
+    }
 
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
-        keyUp?.flags = .maskCommand
-        keyUp?.postToPid(pid)
+    private func requestAccessibilityPermission() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = """
+        To auto-paste when you press Enter, LocalPaste needs Accessibility permission.
+
+        Please go to System Settings → Privacy & Security → Accessibility,
+        and enable "LocalPaste".
+
+        For now, the selected content has been copied to your clipboard —
+        just press ⌘V to paste.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Later")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
 
     // MARK: - Quick Look
@@ -326,6 +357,11 @@ extension FloatingHistoryPanel: QLPreviewPanelDataSource, QLPreviewPanelDelegate
     override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
         cleanupTempPreview()
     }
+}
+
+/// Global state shared across FloatingHistoryPanel instances.
+private enum LocalPasteState {
+    static var hasShownAccessibilityPrompt = false
 }
 
 /// SwiftUI content inside the floating panel.

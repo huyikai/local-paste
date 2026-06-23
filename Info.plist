@@ -24,6 +24,8 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>LocalPaste uses Apple Events to paste clipboard items into the active application when you press Enter.</string>
     <key>CFBundleIconFile</key>
     <string>icon</string>
     <key>NSHumanReadableCopyright</key>
