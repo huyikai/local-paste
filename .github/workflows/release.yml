@@ -45,9 +45,10 @@ jobs:
       - name: Create DMG
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          rm -rf .dmg-staging
           mkdir -p .dmg-staging
           cp -R LocalPaste.app .dmg-staging/
-          ln -s /Applications .dmg-staging/Applications
+          ln -sf /Applications .dmg-staging/Applications
           hdiutil create -volname "LocalPaste" \
             -srcfolder .dmg-staging \
             -ov -format UDZO \
@@ -61,7 +62,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: "LocalPaste ${{ steps.version.outputs.tag }}"
-          files: |
-            LocalPaste-*.dmg
-            LocalPaste.dmg
+          files: LocalPaste*.dmg
           generate_release_notes: true
