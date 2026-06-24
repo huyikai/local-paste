@@ -111,7 +111,7 @@ final class FloatingHistoryPanel: NSPanel {
         guard let appState = appState else { return event }
 
         // SEARCH MODE: keys go to search field
-        if appState.isSearchFocused {
+        if appState.isSearchFocused || appState.isPopoverOpen {
             if Int(event.keyCode) == 53 { // Esc
                 self.makeFirstResponder(nil)
                 appState.isSearchFocused = false

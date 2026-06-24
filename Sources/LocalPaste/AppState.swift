@@ -42,6 +42,9 @@ final class AppState: ObservableObject {
     /// should be passed through for typing, not interpreted as shortcuts.
     @Published var isSearchFocused = false
 
+    /// True when a popover is open — typing should not activate search.
+    @Published var isPopoverOpen = false
+
     /// Available pin groups (the user can create custom ones).
     @Published var pinGroups: [String] = ["General"] {
         didSet { savePinGroups() }

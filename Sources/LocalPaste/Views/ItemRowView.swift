@@ -169,5 +169,7 @@ struct PinGroupPicker: View {
             .padding(8)
         }
         .frame(width: 200)
+        .onAppear { appState.isPopoverOpen = true }
+        .onDisappear { appState.isPopoverOpen = false }
     }
 }
