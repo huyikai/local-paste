@@ -14,7 +14,6 @@ struct MenuBarView: View {
 
             // History list
             HistoryListView()
-                .environmentObject(appState)
 
             Divider()
 

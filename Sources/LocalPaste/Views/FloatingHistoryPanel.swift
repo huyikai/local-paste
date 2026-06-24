@@ -394,7 +394,6 @@ struct HistoryPanelContentView: View {
                 List(selection: $appState.selectedItemIDs) {
                     ForEach(appState.filteredItems) { item in
                         ItemRowView(item: item)
-                            .environmentObject(appState)
                             .id(item.id)
                             .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
                             .listRowSeparator(.hidden)
@@ -402,6 +401,7 @@ struct HistoryPanelContentView: View {
                     .onMove(perform: appState.moveItems)
                 }
                 .listStyle(.plain)
+                .environmentObject(appState)
                 .onChange(of: appState.selectedItemID) { newID in
                     guard let id = newID else { return }
                     withAnimation {
