@@ -173,10 +173,13 @@ final class FloatingHistoryPanel: NSPanel {
     }
 
     private func postCommandV() {
-        let trusted = AXIsProcessTrusted()
-        print("LocalPaste: AXIsProcessTrusted = \(trusted)")
-
-        guard trusted else { return }
+        guard AXIsProcessTrusted() else {
+            // Show prompt and let user know they need to grant permission
+            DispatchQueue.main.async {
+                self.requestAccessibilityPermission()
+            }
+            return
+        }
 
         let source = CGEventSource(stateID: .combinedSessionState)
         let vKey: CGKeyCode = 9
@@ -195,20 +198,24 @@ final class FloatingHistoryPanel: NSPanel {
     }
 
     private func requestAccessibilityPermission() {
+        let now = Date()
+        if let last = LocalPasteState.lastAccessibilityPrompt,
+           now.timeIntervalSince(last) < 10 {
+            return
+        }
+        LocalPasteState.lastAccessibilityPrompt = now
+
         let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
+        alert.messageText = "Auto-Paste Requires Accessibility Permission"
         alert.informativeText = """
-        To auto-paste when you press Enter, LocalPaste needs Accessibility permission.
+        To auto-paste when you press Enter, grant Accessibility permission
+        to LocalPaste in System Settings, then restart the app.
 
-        Please go to System Settings → Privacy & Security → Accessibility,
-        and enable "LocalPaste".
-
-        For now, the selected content has been copied to your clipboard —
-        just press ⌘V to paste.
+        For now, the content is on your clipboard — press ⌘V to paste.
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
+        alert.addButton(withTitle: "OK")
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -370,7 +377,7 @@ extension FloatingHistoryPanel: QLPreviewPanelDataSource, QLPreviewPanelDelegate
 
 /// Global state shared across FloatingHistoryPanel instances.
 private enum LocalPasteState {
-    static var hasShownAccessibilityPrompt = false
+    static var lastAccessibilityPrompt: Date?
 }
 
 /// SwiftUI content inside the floating panel.
