@@ -555,9 +555,7 @@ struct HistoryPanelContentView: View {
                 }
                 Spacer()
                 Button(action: {
-                    if NSApp.delegate?.responds(to: Selector(("showSettingsWindow:"))) == true {
-                        NSApp.delegate?.perform(Selector(("showSettingsWindow:")))
-                    }
+                    _ = NSApp.delegate?.perform(Selector(("showSettingsWindow:")), with: nil)
                 }) {
                     Image(systemName: "gearshape")
                 }

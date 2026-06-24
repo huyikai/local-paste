@@ -232,11 +232,11 @@ final class AppState: ObservableObject {
 
     /// Toggle pin status.
     func togglePin(for item: ClipboardItem) {
-        if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            items[idx].isPinned.toggle()
-            sortItems()
-            saveToDisk()
-        }
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
+        objectWillChange.send()
+        items[idx].isPinned.toggle()
+        sortItems()
+        saveToDisk()
     }
 
     // MARK: - Private helpers
