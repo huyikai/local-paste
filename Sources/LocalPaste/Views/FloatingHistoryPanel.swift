@@ -511,11 +511,31 @@ struct HistoryPanelContentView: View {
                     appState.selectFirstItem()
                 }
 
+            // Group filter
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    FilterChip(label: "All", selected: appState.selectedPinGroup == nil) {
+                        appState.selectedPinGroup = nil
+                    }
+                    ForEach(appState.pinGroups, id: \.self) { group in
+                        FilterChip(label: group, selected: appState.selectedPinGroup == group) {
+                            if appState.selectedPinGroup == group {
+                                appState.selectedPinGroup = nil
+                            } else {
+                                appState.selectedPinGroup = group
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+            }
+
             Divider()
 
             ScrollViewReader { proxy in
                 List(selection: $appState.selectedItemIDs) {
-                    ForEach(appState.filteredItems) { item in
+                    ForEach(appState.displayItems) { item in
                         ItemRowView(item: item)
                             .id(item.id)
                             .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
@@ -538,7 +558,7 @@ struct HistoryPanelContentView: View {
 
             // Footer
             HStack {
-                Text("\(appState.filteredItems.count) items")
+                Text("\(appState.displayItems.count) items")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -570,5 +590,25 @@ struct HistoryPanelContentView: View {
             .padding(.vertical, 8)
         }
         .frame(minWidth: 400, minHeight: 400)
+    }
+}
+
+/// Small chip for group filter selection.
+struct FilterChip: View {
+    let label: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 11, weight: selected ? .semibold : .regular))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(selected ? Color.accentColor : Color(.controlBackgroundColor))
+                .foregroundColor(selected ? .white : .secondary)
+                .cornerRadius(10)
+        }
+        .buttonStyle(.plain)
     }
 }

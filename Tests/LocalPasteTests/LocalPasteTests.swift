@@ -3,11 +3,9 @@ import XCTest
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - Helpers
-
 private func makeItem(data: [String: Data] = [:],
                       text: String? = nil,
-                      pinned: Bool = false,
+                      pinGroup: String? = nil,
                       timestamp: Date = Date(),
                       id: UUID = UUID()) -> ClipboardItem {
     var itemData = data
@@ -21,7 +19,7 @@ private func makeItem(data: [String: Data] = [:],
         typeOrder: Array(itemData.keys),
         appName: "TestApp",
         appIconData: nil,
-        isPinned: pinned
+        pinGroup: pinGroup
     )
 }
 
@@ -38,7 +36,6 @@ final class ClipboardItemTests: XCTestCase {
 
     func testImageContentTypeIcon() {
         _ = makeItem(data: [UTType.png.identifier: Data()])
-        // Even with empty PNG data, key detection should identify it as photo
     }
 
     func testFileURLContentIcon() {
@@ -70,57 +67,36 @@ final class ClipboardItemTests: XCTestCase {
         let item = makeItem(data: ["com.apple.cocoa.pasteboard.color": colorData])
         XCTAssertEqual(item.contentTypeIcon, "paintpalette")
     }
+
+    func testPinGroupSearch() {
+        let item = makeItem(text: "test", pinGroup: "Work")
+        XCTAssertTrue(item.matches(query: "Work"))
+    }
 }
 
 // MARK: - SortingTests
 
 final class SortingTests: XCTestCase {
 
-    func testPinnedItemsComeFirst() {
-        let now = Date()
-        let pinned = makeItem(text: "p", pinned: true, timestamp: now.addingTimeInterval(-100))
-        let unpinned = makeItem(text: "u", pinned: false, timestamp: now)
+    func testNewestFirst() {
+        let old = makeItem(text: "old", timestamp: Date(timeIntervalSince1970: 1000))
+        let newer = makeItem(text: "new", timestamp: Date(timeIntervalSince1970: 2000))
 
-        let sorted = [unpinned, pinned].sorted(by: sortFn)
-        XCTAssertTrue(sorted[0].isPinned)
-        XCTAssertFalse(sorted[1].isPinned)
-    }
-
-    func testNewestFirstWithinSamePinState() {
-        let old = makeItem(text: "old", pinned: false,
-                           timestamp: Date(timeIntervalSince1970: 1000))
-        let newer = makeItem(text: "new", pinned: false,
-                             timestamp: Date(timeIntervalSince1970: 2000))
-
-        let sorted = [old, newer].sorted(by: sortFn)
+        let sorted = [old, newer].sorted { $0.timestamp > $1.timestamp }
         XCTAssertEqual(sorted[0].plainText, "new")
         XCTAssertEqual(sorted[1].plainText, "old")
     }
 
-    func testMultiplePinnedNewestFirst() {
-        let p1 = makeItem(text: "p1", pinned: true,
-                          timestamp: Date(timeIntervalSince1970: 1000))
-        let p2 = makeItem(text: "p2", pinned: true,
-                          timestamp: Date(timeIntervalSince1970: 2000))
-        let u1 = makeItem(text: "u1", pinned: false,
-                          timestamp: Date(timeIntervalSince1970: 3000))
-        let u2 = makeItem(text: "u2", pinned: false,
-                          timestamp: Date(timeIntervalSince1970: 1500))
+    func testAllItemsSortedByTimestamp() {
+        let a = makeItem(text: "a", pinGroup: "Work", timestamp: Date(timeIntervalSince1970: 1000))
+        let b = makeItem(text: "b", timestamp: Date(timeIntervalSince1970: 3000))
+        let c = makeItem(text: "c", pinGroup: "Work", timestamp: Date(timeIntervalSince1970: 2000))
 
-        let sorted = [u1, p1, u2, p2].sorted(by: sortFn)
-        XCTAssertTrue(sorted[0].isPinned)
-        XCTAssertTrue(sorted[1].isPinned)
-        XCTAssertFalse(sorted[2].isPinned)
-        XCTAssertFalse(sorted[3].isPinned)
-        XCTAssertEqual(sorted[0].timestamp, Date(timeIntervalSince1970: 2000))
-        XCTAssertEqual(sorted[2].timestamp, Date(timeIntervalSince1970: 3000))
-        XCTAssertEqual(sorted[3].timestamp, Date(timeIntervalSince1970: 1500))
+        let sorted = [a, b, c].sorted { $0.timestamp > $1.timestamp }
+        XCTAssertEqual(sorted[0].plainText, "b")
+        XCTAssertEqual(sorted[1].plainText, "c")
+        XCTAssertEqual(sorted[2].plainText, "a")
     }
-
-    private var sortFn: (ClipboardItem, ClipboardItem) -> Bool {{
-        if $0.isPinned != $1.isPinned { return $0.isPinned && !$1.isPinned }
-        return $0.timestamp > $1.timestamp
-    }}
 }
 
 // MARK: - PasteboardTypesTests
@@ -167,12 +143,13 @@ final class HistoryStoreTests: XCTestCase {
         let fileURL = tempDir.appendingPathComponent("test-history.json")
         let store = HistoryStore(maxItems: 10, storageURL: fileURL)
 
-        let item = makeItem(text: "test store")
+        let item = makeItem(text: "test store", pinGroup: "Work")
         store.save([item])
         let loaded = store.load()
 
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded[0].plainText, "test store")
+        XCTAssertEqual(loaded[0].pinGroup, "Work")
     }
 
     func testStoreEnforcesMaxItems() {
@@ -211,7 +188,6 @@ final class AppStateTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        // Reset persisted data before each test to avoid cross-contamination
         let appState = AppState()
         appState.resetForTesting()
     }
@@ -227,10 +203,8 @@ final class AppStateTests: XCTestCase {
         appState.insertItem(new)
 
         XCTAssertGreaterThanOrEqual(appState.items.count, 2)
-        // The first unpinned item should be "new"
-        let unpinned = appState.items.filter { !$0.isPinned }
-        XCTAssertEqual(unpinned[0].plainText, "new")
-        XCTAssertEqual(unpinned[1].plainText, "old")
+        XCTAssertEqual(appState.items[0].plainText, "new")
+        XCTAssertEqual(appState.items[1].plainText, "old")
     }
 
     func testInsertItemDeduplicatesIdenticalData() {
@@ -242,15 +216,14 @@ final class AppStateTests: XCTestCase {
         let id = UUID()
         let item1 = ClipboardItem(id: id, timestamp: Date(timeIntervalSince1970: 1000),
                                    data: data, typeOrder: Array(data.keys),
-                                   appName: nil, appIconData: nil, isPinned: false)
+                                   appName: nil, appIconData: nil, pinGroup: nil)
         let item2 = ClipboardItem(id: id, timestamp: Date(timeIntervalSince1970: 2000),
                                    data: data, typeOrder: Array(data.keys),
-                                   appName: nil, appIconData: nil, isPinned: false)
+                                   appName: nil, appIconData: nil, pinGroup: nil)
 
         appState.insertItem(item1)
         appState.insertItem(item2)
 
-        // After dedup, only +1 from the initial count
         XCTAssertEqual(appState.items.count, initialCount + 1)
     }
 
@@ -273,26 +246,46 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(appState.filteredItems.count, appState.items.count)
     }
 
-    func testTogglePin() {
+    func testSetPinGroup() {
         let appState = AppState()
         appState.resetForTesting()
 
-        let item = makeItem(text: "pinned", pinned: false)
+        let item = makeItem(text: "pinned")
         appState.insertItem(item)
 
         guard let first = appState.items.first else { XCTFail(); return }
-        let originalPin = first.isPinned
-        appState.togglePin(for: first)
+        XCTAssertNil(first.pinGroup)
 
-        // After toggle, the first item should have opposite pinned status
-        if let toggled = appState.items.first(where: { $0.id == first.id }) {
-            XCTAssertNotEqual(toggled.isPinned, originalPin)
-            // Toggle again — should return to original
-            appState.togglePin(for: toggled)
-            if let back = appState.items.first(where: { $0.id == first.id }) {
-                XCTAssertEqual(back.isPinned, originalPin)
-            }
-        }
+        appState.setPinGroup(for: first, group: "Work")
+        guard let updated = appState.items.first(where: { $0.id == first.id }) else { XCTFail(); return }
+        XCTAssertEqual(updated.pinGroup, "Work")
+
+        // Clear
+        appState.setPinGroup(for: updated, group: nil)
+        guard let cleared = appState.items.first(where: { $0.id == first.id }) else { XCTFail(); return }
+        XCTAssertNil(cleared.pinGroup)
+    }
+
+    func testPinGroupFilter() {
+        let appState = AppState()
+        appState.resetForTesting()
+
+        appState.insertItem(makeItem(text: "a", pinGroup: "Work"))
+        appState.insertItem(makeItem(text: "b"))
+        appState.insertItem(makeItem(text: "c", pinGroup: "Personal"))
+
+        // All (no filter)
+        appState.selectedPinGroup = nil
+        XCTAssertEqual(appState.displayItems.count, 3)
+
+        // Filter by group
+        appState.selectedPinGroup = "Work"
+        XCTAssertEqual(appState.displayItems.count, 1)
+        XCTAssertEqual(appState.displayItems[0].plainText, "a")
+
+        appState.selectedPinGroup = "Personal"
+        XCTAssertEqual(appState.displayItems.count, 1)
+        XCTAssertEqual(appState.displayItems[0].plainText, "c")
     }
 
     func testClearHistory() {
@@ -327,33 +320,27 @@ final class AppStateTests: XCTestCase {
         appState.insertItem(makeItem(text: "B", timestamp: Date(timeIntervalSince1970: 2000)))
         appState.insertItem(makeItem(text: "A", timestamp: Date(timeIntervalSince1970: 1000)))
 
-        let filtered = appState.filteredItems
-        guard filtered.count >= 3 else { XCTFail("Need at least 3 items"); return }
+        let display = appState.displayItems
+        guard display.count >= 3 else { XCTFail("Need at least 3 items"); return }
 
-        // No selection initially
         appState.clearSelection()
         XCTAssertNil(appState.selectedItemID)
 
-        // selectNext → first item (newest = C)
         appState.selectNext()
-        XCTAssertEqual(appState.selectedItemID, filtered[0].id)
+        XCTAssertEqual(appState.selectedItemID, display[0].id)
 
-        // selectNext → second item
         appState.selectNext()
-        XCTAssertEqual(appState.selectedItemID, filtered[1].id)
+        XCTAssertEqual(appState.selectedItemID, display[1].id)
 
-        // selectPrevious → back to first
         appState.selectPrevious()
-        XCTAssertEqual(appState.selectedItemID, filtered[0].id)
+        XCTAssertEqual(appState.selectedItemID, display[0].id)
 
-        // selectPrevious at boundary stays at first
         appState.selectPrevious()
-        XCTAssertEqual(appState.selectedItemID, filtered[0].id)
+        XCTAssertEqual(appState.selectedItemID, display[0].id)
 
-        // Jump to last and try selectNext → stays at last
-        appState.selectedItemID = filtered[filtered.count - 1].id
+        appState.selectedItemID = display[display.count - 1].id
         appState.selectNext()
-        XCTAssertEqual(appState.selectedItemID, filtered[filtered.count - 1].id)
+        XCTAssertEqual(appState.selectedItemID, display[display.count - 1].id)
     }
 
     func testMultiSelectBatchDelete() {

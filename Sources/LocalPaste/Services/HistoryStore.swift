@@ -13,7 +13,7 @@ final class HistoryStore {
         let typeOrder: [String]
         let appName: String?
         let appIconData: Data?
-        let isPinned: Bool
+        let pinGroup: String?
 
         init(from item: ClipboardItem) {
             self.id = item.id
@@ -22,7 +22,7 @@ final class HistoryStore {
             self.typeOrder = item.typeOrder
             self.appName = item.appName
             self.appIconData = item.appIconData
-            self.isPinned = item.isPinned
+            self.pinGroup = item.pinGroup
         }
 
         func toClipboardItem() -> ClipboardItem {
@@ -33,7 +33,7 @@ final class HistoryStore {
                 typeOrder: typeOrder,
                 appName: appName,
                 appIconData: appIconData,
-                isPinned: isPinned
+                pinGroup: pinGroup
             )
         }
     }
@@ -81,14 +81,8 @@ final class HistoryStore {
         do {
             let storableItems = try decoder.decode([StorableItem].self, from: data)
             var items = storableItems.map { $0.toClipboardItem() }
-
-            // Sort: pinned items first, then by timestamp descending
-            items.sort { a, b in
-                if a.isPinned != b.isPinned {
-                    return a.isPinned && !b.isPinned
-                }
-                return a.timestamp > b.timestamp
-            }
+            // Sort by timestamp descending
+            items.sort { $0.timestamp > $1.timestamp }
 
             return items
         } catch {

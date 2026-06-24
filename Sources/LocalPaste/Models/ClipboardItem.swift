@@ -15,8 +15,8 @@ struct ClipboardItem: Identifiable, Hashable {
     let appName: String?
     /// The source application icon as PNG data (if available).
     let appIconData: Data?
-    /// Whether the user has pinned this item.
-    var isPinned: Bool
+    /// Which pin group this item belongs to (nil = not pinned).
+    var pinGroup: String?
 
     var appIcon: NSImage? {
         guard let data = appIconData else { return nil }
@@ -128,6 +128,7 @@ struct ClipboardItem: Identifiable, Hashable {
         let q = query.lowercased()
         if let text = plainText, text.lowercased().contains(q) { return true }
         if contentTypeIcon.lowercased().contains(q) { return true }
+        if let g = pinGroup, g.lowercased().contains(q) { return true }
         return false
     }
 

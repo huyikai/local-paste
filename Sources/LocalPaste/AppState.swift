@@ -42,15 +42,22 @@ final class AppState: ObservableObject {
     /// should be passed through for typing, not interpreted as shortcuts.
     @Published var isSearchFocused = false
 
+    /// Available pin groups (the user can create custom ones).
+    @Published var pinGroups: [String] = ["General"] {
+        didSet { savePinGroups() }
+    }
+
+    /// Items belonging to one of the pin groups.
+
     /// Select the next item in `filteredItems`.
     func selectNext() {
         guard let current = selectedItemID else {
             selectedItemID = filteredItems.first?.id
             return
         }
-        guard let idx = filteredItems.firstIndex(where: { $0.id == current }),
-              idx + 1 < filteredItems.count else { return }
-        selectedItemID = filteredItems[idx + 1].id
+        guard let idx = displayItems.firstIndex(where: { $0.id == current }),
+              idx + 1 < displayItems.count else { return }
+        selectedItemID = displayItems[idx + 1].id
     }
 
     /// Select the previous item in `filteredItems`.
@@ -59,9 +66,9 @@ final class AppState: ObservableObject {
             selectedItemID = filteredItems.first?.id
             return
         }
-        guard let idx = filteredItems.firstIndex(where: { $0.id == current }),
+        guard let idx = displayItems.firstIndex(where: { $0.id == current }),
               idx > 0 else { return }
-        selectedItemID = filteredItems[idx - 1].id
+        selectedItemID = displayItems[idx - 1].id
     }
 
     /// Paste the currently selected item and dismiss the panel.
@@ -95,6 +102,28 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Pin groups
+
+    /// Currently selected group filter ("All" or a group name). nil = "All".
+    @Published var selectedPinGroup: String? = nil
+
+    /// Filtered items respecting pin group selection.
+    var displayItems: [ClipboardItem] {
+        let base = searchQuery.isEmpty ? items : filteredItems
+        guard let group = selectedPinGroup else { return base }
+        return base.filter { $0.pinGroup == group }
+    }
+
+    private func savePinGroups() {
+        UserDefaults.standard.set(pinGroups, forKey: "pinGroups")
+    }
+
+    private func loadPinGroups() {
+        if let saved = UserDefaults.standard.stringArray(forKey: "pinGroups"), !saved.isEmpty {
+            pinGroups = saved
+        }
+    }
+
     /// Delete all currently multi-selected items.
     func deleteSelectedItems() {
         items.removeAll { selectedItemIDs.contains($0.id) }
@@ -110,7 +139,7 @@ final class AppState: ObservableObject {
 
     /// Select the first item (called when panel opens).
     func selectFirstItem() {
-        selectedItemID = filteredItems.first?.id
+        selectedItemID = displayItems.first?.id
     }
 
     /// Clear the selection (called when panel closes).
@@ -231,14 +260,11 @@ final class AppState: ObservableObject {
     }
 
     /// Toggle pin status.
-    func togglePin(for item: ClipboardItem) {
+    /// Set or clear the pin group for an item.
+    func setPinGroup(for item: ClipboardItem, group: String?) {
         var copy = items
         if let idx = copy.firstIndex(where: { $0.id == item.id }) {
-            copy[idx].isPinned.toggle()
-        }
-        copy.sort { a, b in
-            if a.isPinned != b.isPinned { return a.isPinned && !b.isPinned }
-            return a.timestamp > b.timestamp
+            copy[idx].pinGroup = group
         }
         items = copy
         saveToDisk()
@@ -252,19 +278,12 @@ final class AppState: ObservableObject {
     }
 
     private func sortItems() {
-        items = items.sorted { a, b in
-            if a.isPinned != b.isPinned {
-                return a.isPinned && !b.isPinned
-            }
-            return a.timestamp > b.timestamp
-        }
+        items = items.sorted { $0.timestamp > $1.timestamp }
     }
 
     private func enforceLimit() {
         if items.count > maxHistoryCount {
-            let pinned = items.filter(\.isPinned)
-            let unpinned = items.filter { !$0.isPinned }.prefix(maxHistoryCount - pinned.count)
-            items = Array(pinned + unpinned)
+            items = Array(items.prefix(maxHistoryCount))
         }
     }
 
@@ -281,6 +300,7 @@ final class AppState: ObservableObject {
         maxHistoryCount = UserDefaults.standard.integer(forKey: "maxHistoryCount")
         if maxHistoryCount == 0 { maxHistoryCount = 200 }
         launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
+        loadPinGroups()
     }
 
     deinit {

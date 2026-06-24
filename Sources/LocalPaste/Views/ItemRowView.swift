@@ -3,16 +3,10 @@ import SwiftUI
 struct ItemRowView: View {
     @EnvironmentObject var appState: AppState
     let item: ClipboardItem
-    @State private var pinned: Bool
-
-    init(item: ClipboardItem) {
-        self.item = item
-        self._pinned = State(initialValue: item.isPinned)
-    }
+    @State private var showPinPopover = false
 
     var body: some View {
         HStack(spacing: 10) {
-            // App icon
             Group {
                 if let icon = item.appIcon {
                     Image(nsImage: icon)
@@ -27,7 +21,6 @@ struct ItemRowView: View {
                 }
             }
 
-            // Content
             VStack(alignment: .leading, spacing: 3) {
                 if let image = item.image {
                     Image(nsImage: image)
@@ -46,7 +39,6 @@ struct ItemRowView: View {
                         .foregroundColor(.primary)
                 }
 
-                // Meta
                 HStack(spacing: 6) {
                     if let app = item.appName {
                         Text(app)
@@ -56,26 +48,28 @@ struct ItemRowView: View {
                     Text(item.timestamp, style: .time)
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
-                    if pinned {
-                        Image(systemName: "pin.fill")
+                    if let group = item.pinGroup {
+                        Text(group)
                             .font(.system(size: 9))
                             .foregroundColor(.accentColor)
+                            .padding(.horizontal, 4)
+                            .background(Capsule().fill(Color.accentColor.opacity(0.12)))
                     }
                 }
             }
 
             Spacer(minLength: 4)
 
-            Button(action: {
-                appState.togglePin(for: item)
-                pinned.toggle()
-            }) {
-                Image(systemName: pinned ? "pin.fill" : "pin")
+            Button(action: { showPinPopover = true }) {
+                Image(systemName: item.pinGroup != nil ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 13))
-                    .foregroundColor(pinned ? .accentColor : Color.secondary)
+                    .foregroundColor(item.pinGroup != nil ? .accentColor : Color.secondary)
             }
             .buttonStyle(.plain)
-            .help(pinned ? "Unpin" : "Pin")
+            .popover(isPresented: $showPinPopover, arrowEdge: .trailing) {
+                PinGroupPicker(item: item)
+                    .environmentObject(appState)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -90,7 +84,6 @@ struct ItemRowView: View {
         )
         .onTapGesture { appState.selectedItemID = item.id }
         .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
-        .onChange(of: item.isPinned) { pinned = $0 }
         .contextMenu {
             Button(action: { appState.copyItemToPasteboard(item) }) {
                 Label("Paste", systemImage: "doc.on.clipboard")
@@ -103,13 +96,78 @@ struct ItemRowView: View {
                     Label("Paste as Plain Text", systemImage: "text.alignleft")
                 }
             }
-            Button(action: { appState.togglePin(for: item) }) {
-                Label(item.isPinned ? "Unpin" : "Pin", systemImage: "pin")
+            Button(action: { showPinPopover = true }) {
+                Label(item.pinGroup != nil ? "Change Group..." : "Pin to Group...", systemImage: "bookmark")
+            }
+            if item.pinGroup != nil {
+                Button(action: { appState.setPinGroup(for: item, group: nil) }) {
+                    Label("Unpin", systemImage: "bookmark.slash")
+                }
             }
             Divider()
             Button(role: .destructive, action: { appState.deleteItem(item) }) {
                 Label("Delete", systemImage: "trash")
             }
         }
+    }
+}
+
+/// Popover with pin group selection.
+struct PinGroupPicker: View {
+    @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) private var dismiss
+    let item: ClipboardItem
+    @State private var newGroupName = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Pin to Group")
+                .font(.headline)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+
+            Divider()
+
+            ForEach(appState.pinGroups, id: \.self) { group in
+                Button(action: {
+                    appState.setPinGroup(for: item, group: group)
+                    dismiss()
+                }) {
+                    HStack {
+                        Text(group)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if item.pinGroup == group {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            HStack {
+                TextField("New group...", text: $newGroupName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                Button("Add") {
+                    let name = newGroupName.trimmingCharacters(in: .whitespaces)
+                    guard !name.isEmpty, !appState.pinGroups.contains(name) else { return }
+                    appState.pinGroups.append(name)
+                    appState.setPinGroup(for: item, group: name)
+                    newGroupName = ""
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .font(.system(size: 12))
+                .disabled(newGroupName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(8)
+        }
+        .frame(width: 200)
     }
 }

@@ -43,7 +43,7 @@ final class PasteboardManager {
             typeOrder: typeOrder,
             appName: appName ?? name,
             appIconData: iconData,
-            isPinned: false
+            pinGroup: nil
         )
     }
 
@@ -65,7 +65,7 @@ final class PasteboardManager {
             typeOrder: typeOrder,
             appName: name,
             appIconData: iconData,
-            isPinned: false
+            pinGroup: nil
         )
     }
 
