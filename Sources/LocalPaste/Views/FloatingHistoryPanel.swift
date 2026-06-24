@@ -364,46 +364,66 @@ final class FloatingHistoryPanel: NSPanel {
 // MARK: - Custom preview panel
 
 private final class PreviewPanel: NSPanel {
-
     var onClose: (() -> Void)?
-
+    private let scrollView = NSScrollView()
     private let imageView = NSImageView()
     private let textView = NSTextView()
     private let webView = WKWebView()
+    private var closeMonitor: Any?
 
     init(contentRect: NSRect) {
         super.init(contentRect: contentRect,
                    styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
                    backing: .buffered, defer: false)
-
         isFloatingPanel = true
         level = .floating
         title = "Preview"
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
+        backgroundColor = .windowBackgroundColor
+
+        scrollView.hasVerticalScroller = true
+        scrollView.borderType = .noBorder
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.frame = contentView?.bounds ?? .zero
+        contentView?.addSubview(scrollView)
 
         textView.isEditable = false
         textView.isSelectable = true
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 12)
-
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainerInset = NSSize(width: 16, height: 16)
+        textView.font = NSFont.systemFont(ofSize: 14)
+        imageView.imageScaling = .scaleProportionallyUpOrDown
         webView.setValue(false, forKey: "drawsBackground")
     }
 
     func showHTML(data: Data) {
-        webView.frame = contentView?.bounds ?? .zero
+        resetContent()
+        webView.frame = scrollView.bounds
         webView.autoresizingMask = [.width, .height]
-        contentView = webView
-        webView.load(data, mimeType: "text/html", characterEncodingName: "UTF-8",
-                     baseURL: URL(fileURLWithPath: "/"))
+        scrollView.documentView = webView
+        let css = "<style>body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:#222}pre{background:#f4f4f4;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace}code{font:0.88em 'SF Mono',monospace;background:#f0f0f0;padding:2px 5px;border-radius:4px}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em;font-weight:600}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px;color:#555}</style>"
+        var htmlStr = String(data: data, encoding: .utf8) ?? ""
+        if htmlStr.contains("</style>") {
+            htmlStr = htmlStr.replacingOccurrences(of: "</style>", with: "\(css)</style>")
+        } else if htmlStr.contains("<head>") {
+            htmlStr = htmlStr.replacingOccurrences(of: "<head>", with: "<head>\(css)")
+        } else {
+            htmlStr = "<html><head><meta name='viewport' content='width=device-width'>\(css)</head><body>\(htmlStr)</body></html>"
+        }
+        webView.loadHTMLString(htmlStr, baseURL: nil)
         makeKeyAndOrderFront(nil)
         installCloseMonitor()
     }
 
     func showRTF(data: Data) {
-        textView.frame = contentView?.bounds ?? .zero
-        textView.autoresizingMask = [.width, .height]
-        contentView = textView
+        resetContent()
+        textView.frame = scrollView.bounds
+        textView.autoresizingMask = [.width]
+        scrollView.documentView = textView
         if let attr = try? NSAttributedString(data: data,
                                                options: [.documentType: NSAttributedString.DocumentType.rtf],
                                                documentAttributes: nil) {
@@ -414,47 +434,42 @@ private final class PreviewPanel: NSPanel {
     }
 
     func showText(_ text: String) {
-        textView.frame = contentView?.bounds ?? .zero
-        textView.autoresizingMask = [.width, .height]
-        contentView = textView
+        resetContent()
+        textView.frame = scrollView.bounds
+        textView.autoresizingMask = [.width]
+        scrollView.documentView = textView
         textView.string = text
         makeKeyAndOrderFront(nil)
         installCloseMonitor()
     }
 
     func showImage(data: Data) {
+        resetContent()
         imageView.image = NSImage(data: data)
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.frame = contentView?.bounds ?? .zero
-        imageView.autoresizingMask = [.width, .height]
-        contentView = imageView
+        imageView.frame = scrollView.bounds
+        scrollView.documentView = imageView
         makeKeyAndOrderFront(nil)
         installCloseMonitor()
     }
 
-    private var closeMonitor: Any?
+    private func resetContent() { scrollView.documentView = nil }
+
+    override func close() {
+        if let m = closeMonitor { NSEvent.removeMonitor(m); closeMonitor = nil }
+        onClose?()
+        orderOut(nil)
+    }
 
     private func installCloseMonitor() {
         guard closeMonitor == nil else { return }
         closeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.isKeyWindow else { return event }
             switch Int(event.keyCode) {
-            case 49: // Space
-                self.close()
-                return nil
-            case 53: // Escape
-                self.close()
-                return nil
-            default:
-                return event
+            case 49: self.close(); return nil
+            case 53: self.close(); return nil
+            default: return event
             }
         }
-    }
-
-    override func close() {
-        if let m = closeMonitor { NSEvent.removeMonitor(m); closeMonitor = nil }
-        onClose?()
-        orderOut(nil)
     }
 }
 
