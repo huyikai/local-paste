@@ -131,28 +131,24 @@ final class AppState: ObservableObject {
     init() {
         pasteboardManager = PasteboardManager()
         store = HistoryStore()
-
-        // Set up the monitor
         monitor = PasteboardMonitor(pasteboardManager: pasteboardManager)
-
-        // Set up hotkey
         hotKeyManager = HotKeyManager()
-
-        // Load saved history
         items = store.load()
-
-        // Set delegate and start monitoring
         monitor.delegate = self
         monitor.start()
 
-        // Register global hotkey (⌥⌘V)
         hotKeyManager.onHotKeyPressed = { [weak self] in
             DispatchQueue.main.async {
                 self?.toggleFloatingPanel()
             }
         }
         _ = hotKeyManager.register()
+
+        // Expose globally for AppDelegate
+        AppState.shared = self
     }
+
+    static private(set) weak var shared: AppState?
 
     // MARK: - Public methods
 
