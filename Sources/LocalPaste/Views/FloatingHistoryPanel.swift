@@ -554,6 +554,11 @@ struct HistoryPanelContentView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
+                Button(action: { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }) {
+                    Image(systemName: "gearshape")
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
                 Button("Clear") { appState.clearHistory() }
                     .buttonStyle(.plain)
                     .font(.caption)
