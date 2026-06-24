@@ -390,15 +390,6 @@ private final class PreviewPanel: NSPanel {
         webView.setValue(false, forKey: "drawsBackground")
     }
 
-    func showImage(data: Data) {
-        imageView.image = NSImage(data: data)
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.frame = contentView?.bounds ?? .zero
-        imageView.autoresizingMask = [.width, .height]
-        contentView = imageView
-        makeKeyAndOrderFront(nil)
-    }
-
     func showHTML(data: Data) {
         webView.frame = contentView?.bounds ?? .zero
         webView.autoresizingMask = [.width, .height]
@@ -406,6 +397,7 @@ private final class PreviewPanel: NSPanel {
         webView.load(data, mimeType: "text/html", characterEncodingName: "UTF-8",
                      baseURL: URL(fileURLWithPath: "/"))
         makeKeyAndOrderFront(nil)
+        installCloseMonitor()
     }
 
     func showRTF(data: Data) {
@@ -418,6 +410,7 @@ private final class PreviewPanel: NSPanel {
             textView.textStorage?.setAttributedString(attr)
         }
         makeKeyAndOrderFront(nil)
+        installCloseMonitor()
     }
 
     func showText(_ text: String) {
@@ -426,9 +419,40 @@ private final class PreviewPanel: NSPanel {
         contentView = textView
         textView.string = text
         makeKeyAndOrderFront(nil)
+        installCloseMonitor()
+    }
+
+    func showImage(data: Data) {
+        imageView.image = NSImage(data: data)
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.frame = contentView?.bounds ?? .zero
+        imageView.autoresizingMask = [.width, .height]
+        contentView = imageView
+        makeKeyAndOrderFront(nil)
+        installCloseMonitor()
+    }
+
+    private var closeMonitor: Any?
+
+    private func installCloseMonitor() {
+        guard closeMonitor == nil else { return }
+        closeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self, self.isKeyWindow else { return event }
+            switch Int(event.keyCode) {
+            case 49: // Space
+                self.close()
+                return nil
+            case 53: // Escape
+                self.close()
+                return nil
+            default:
+                return event
+            }
+        }
     }
 
     override func close() {
+        if let m = closeMonitor { NSEvent.removeMonitor(m); closeMonitor = nil }
         onClose?()
         orderOut(nil)
     }
