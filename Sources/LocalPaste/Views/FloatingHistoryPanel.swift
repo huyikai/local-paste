@@ -135,11 +135,14 @@ final class FloatingHistoryPanel: NSPanel {
             }
             return nil
         case 49: // Space — Quick Look
-            if QLPreviewPanel.shared()?.isVisible == true {
-                // Let QLPreviewPanel handle its native Space-to-close
-                return event
+            if let ql = QLPreviewPanel.shared(), ql.isVisible {
+                // Close programmatically — native Space-to-close doesn't
+                // work because QLPreviewPanel isn't our app's window
+                ql.close()
+                cleanupTempPreview()
+            } else {
+                openQuickLook(appState: appState)
             }
-            openQuickLook(appState: appState)
             return nil
         case 53: // Escape
             closeQuickLookIfNeeded()
