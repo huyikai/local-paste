@@ -575,7 +575,14 @@ struct HistoryPanelContentView: View {
                 }
                 Spacer()
                 Button(action: {
-                    _ = NSApp.delegate?.perform(Selector(("showSettingsWindow:")), with: nil)
+                    // Trigger Cmd+, which opens the Settings scene
+                    let src = CGEventSource(stateID: .combinedSessionState)
+                    let down = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: true) // comma key
+                    down?.flags = .maskCommand
+                    down?.post(tap: .cghidEventTap)
+                    let up = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: false)
+                    up?.flags = .maskCommand
+                    up?.post(tap: .cghidEventTap)
                 }) {
                     Image(systemName: "gearshape")
                 }
