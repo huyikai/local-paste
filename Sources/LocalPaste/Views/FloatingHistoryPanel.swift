@@ -14,6 +14,9 @@ final class FloatingHistoryPanel: NSPanel {
     private var previousAppBeforePanel: NSRunningApplication?
     /// Temporary file URL for Quick Look preview.
     private var tempPreviewURL: URL?
+    /// True while QLPreviewPanel was opened by us — prevents windowDidResignKey
+    /// from hiding the history panel while Quick Look is active.
+    private var isQuickLookOpen = false
 
     // MARK: - Init
 
@@ -77,8 +80,8 @@ final class FloatingHistoryPanel: NSPanel {
     }
 
     @objc func windowDidResignKey(_ notification: Notification) {
-        // If QLPreviewPanel is visible, don't hide — it just took focus
-        if QLPreviewPanel.shared()?.isVisible == true { return }
+        // Quick Look is open — don't hide our panel
+        if isQuickLookOpen { return }
         closeQuickLookIfNeeded()
         hide()
         appState?.clearSelection()
@@ -136,9 +139,8 @@ final class FloatingHistoryPanel: NSPanel {
             return nil
         case 49: // Space — Quick Look
             if let ql = QLPreviewPanel.shared(), ql.isVisible {
-                // Close programmatically — native Space-to-close doesn't
-                // work because QLPreviewPanel isn't our app's window
                 ql.close()
+                isQuickLookOpen = false
                 cleanupTempPreview()
             } else {
                 openQuickLook(appState: appState)
@@ -261,13 +263,16 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         tempPreviewURL = tempURL
+        isQuickLookOpen = true
         QLPreviewPanel.shared()?.makeKeyAndOrderFront(nil)
     }
 
     private func closeQuickLookIfNeeded() {
-        if QLPreviewPanel.shared().isVisible {
-            QLPreviewPanel.shared().orderOut(nil)
+        guard let ql = QLPreviewPanel.shared() else { return }
+        if ql.isVisible {
+            ql.close()
         }
+        isQuickLookOpen = false
         cleanupTempPreview()
     }
 
@@ -374,6 +379,7 @@ extension FloatingHistoryPanel: QLPreviewPanelDataSource, QLPreviewPanelDelegate
     }
 
     override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        isQuickLookOpen = false
         cleanupTempPreview()
     }
 }
