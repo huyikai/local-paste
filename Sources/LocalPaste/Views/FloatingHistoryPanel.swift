@@ -77,6 +77,8 @@ final class FloatingHistoryPanel: NSPanel {
     }
 
     @objc func windowDidResignKey(_ notification: Notification) {
+        // If QLPreviewPanel is visible, don't hide — it just took focus
+        if QLPreviewPanel.shared()?.isVisible == true { return }
         closeQuickLookIfNeeded()
         hide()
         appState?.clearSelection()
@@ -134,12 +136,11 @@ final class FloatingHistoryPanel: NSPanel {
             return nil
         case 49: // Space — Quick Look
             if QLPreviewPanel.shared()?.isVisible == true {
-                // QLPreviewPanel handles Space natively to close
+                // Let QLPreviewPanel handle its native Space-to-close
                 return event
-            } else {
-                openQuickLook(appState: appState)
-                return nil
             }
+            openQuickLook(appState: appState)
+            return nil
         case 53: // Escape
             closeQuickLookIfNeeded()
             hide()
