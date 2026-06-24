@@ -384,6 +384,7 @@ private final class PreviewPanel: NSPanel {
 
         scrollView.hasVerticalScroller = true
         scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
         scrollView.autoresizingMask = [.width, .height]
         scrollView.frame = contentView?.bounds ?? .zero
         contentView?.addSubview(scrollView)
@@ -397,7 +398,7 @@ private final class PreviewPanel: NSPanel {
         textView.textContainerInset = NSSize(width: 16, height: 16)
         textView.font = NSFont.systemFont(ofSize: 14)
         imageView.imageScaling = .scaleProportionallyUpOrDown
-        webView.setValue(true, forKey: "drawsBackground")
+        webView.setValue(false, forKey: "drawsBackground")
     }
 
     func showHTML(data: Data) {
@@ -405,7 +406,7 @@ private final class PreviewPanel: NSPanel {
         webView.frame = scrollView.bounds
         webView.autoresizingMask = [.width, .height]
         scrollView.documentView = webView
-        let css = "<style>:root{color-scheme:light dark}body{font:-apple-system-body;padding:20px;margin:0;line-height:1.65;color:CanvasText;background:Canvas;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}h1{font-size:1.6em;font-weight:700;margin:1.2em 0 .3em;padding-bottom:.2em;border-bottom:1px solid color-mix(in srgb,CanvasText 15%,transparent)}h2{font-size:1.35em;font-weight:600;margin:1em 0 .25em}h3{font-size:1.15em;font-weight:600;margin:.8em 0 .2em}p{margin:.4em 0}pre{background:color-mix(in srgb,CanvasText 6%,transparent);padding:16px;border-radius:8px;overflow-x:auto;font:.88em 'SF Mono','Menlo',monospace;line-height:1.5}code{font:.9em 'SF Mono','Menlo',monospace;background:color-mix(in srgb,CanvasText 7%,transparent);padding:2px 6px;border-radius:4px}pre code{background:none;padding:0;font-size:inherit}blockquote{border-left:3px solid color-mix(in srgb,CanvasText 25%,transparent);margin:.5em 0;padding:.2em 16px;color:color-mix(in srgb,CanvasText 55%,transparent)}ul,ol{padding-left:1.6em}li{margin:.25em 0}a{color:-apple-system-link}img{max-width:100%;border-radius:6px}table{border-collapse:collapse;margin:.5em 0}td,th{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);padding:8px 13px}th{background:color-mix(in srgb,CanvasText 5%,transparent);font-weight:600}hr{border:none;border-top:1px solid color-mix(in srgb,CanvasText 12%,transparent);margin:1em 0}</style>"
+        let css = "<style>:root{color-scheme:light dark}html{background:Canvas}body{font:-apple-system-body;padding:20px;margin:0;line-height:1.65;color:CanvasText;background:Canvas;-webkit-font-smoothing:antialiased}h1{font-size:1.6em;font-weight:700;margin:1.2em 0 .3em;padding-bottom:.2em;border-bottom:1px solid color-mix(in srgb,CanvasText 15%,transparent)}h2{font-size:1.35em;font-weight:600;margin:1em 0 .25em}h3{font-size:1.15em;font-weight:600;margin:.8em 0 .2em}p{margin:.4em 0}pre{background:color-mix(in srgb,CanvasText 6%,transparent);padding:16px;border-radius:8px;overflow-x:auto;font:.88em 'SF Mono','Menlo',monospace;line-height:1.5}code{font:.9em 'SF Mono','Menlo',monospace;background:color-mix(in srgb,CanvasText 7%,transparent);padding:2px 6px;border-radius:4px}pre code{background:none;padding:0;font-size:inherit}blockquote{border-left:3px solid color-mix(in srgb,CanvasText 25%,transparent);margin:.5em 0;padding:.2em 16px;color:color-mix(in srgb,CanvasText 55%,transparent)}ul,ol{padding-left:1.6em}li{margin:.25em 0}a{color:-apple-system-link}img{max-width:100%;border-radius:6px}table{border-collapse:collapse;margin:.5em 0}td,th{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);padding:8px 13px}th{background:color-mix(in srgb,CanvasText 5%,transparent);font-weight:600}hr{border:none;border-top:1px solid color-mix(in srgb,CanvasText 12%,transparent);margin:1em 0}</style>"
         var htmlStr = String(data: data, encoding: .utf8) ?? ""
         if htmlStr.contains("</style>") {
             htmlStr = htmlStr.replacingOccurrences(of: "</style>", with: "\(css)</style>")
