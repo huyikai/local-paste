@@ -110,15 +110,21 @@ final class FloatingHistoryPanel: NSPanel {
     private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
         guard let appState = appState else { return event }
 
-        // When search field is focused, pass most keys through for typing.
-        // But Esc should blur the search field.
+        // SEARCH MODE: keys go to search field
         if appState.isSearchFocused {
-            if Int(event.keyCode) == 53 {
-                // Blur search field by making the window itself first responder
+            if Int(event.keyCode) == 53 { // Esc
                 self.makeFirstResponder(nil)
                 appState.isSearchFocused = false
                 return nil
             }
+            return event
+        }
+
+        // NAVIGATION MODE: check if user started typing (not a nav key)
+        let navKeys: Set<Int> = [36, 49, 53, 123, 124, 125, 126, 51, 117, 48]
+        if !navKeys.contains(Int(event.keyCode)) {
+            // User typed a printable character — activate search and pass through
+            appState.isSearchFocused = true
             return event
         }
 

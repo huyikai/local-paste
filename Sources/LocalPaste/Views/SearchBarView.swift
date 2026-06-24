@@ -15,12 +15,6 @@ struct SearchBarView: View {
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focused($isFocused)
-                .onAppear {
-                    // Auto-focus after a short delay to ensure view is ready
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isFocused = true
-                    }
-                }
 
             if !text.isEmpty {
                 Button(action: { text = "" }) {
@@ -33,6 +27,14 @@ struct SearchBarView: View {
         .padding(8)
         .background(Color(.controlBackgroundColor))
         .cornerRadius(8)
-        .onChange(of: isFocused) { appState.isSearchFocused = $0 }
+        .onChange(of: appState.isSearchFocused) { newValue in
+            isFocused = newValue
+        }
+        .onChange(of: isFocused) { newValue in
+            // Sync back: clicking the search field manually
+            if !newValue && appState.isSearchFocused {
+                appState.isSearchFocused = false
+            }
+        }
     }
 }
