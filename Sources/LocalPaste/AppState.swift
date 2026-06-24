@@ -38,6 +38,10 @@ final class AppState: ObservableObject {
     /// The currently highlighted item ID, or nil if none.
     @Published var selectedItemID: UUID?
 
+    /// True when the search field has keyboard focus — Space/arrows
+    /// should be passed through for typing, not interpreted as shortcuts.
+    @Published var isSearchFocused = false
+
     /// Select the next item in `filteredItems`.
     func selectNext() {
         guard let current = selectedItemID else {

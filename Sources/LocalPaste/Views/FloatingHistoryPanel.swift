@@ -110,10 +110,22 @@ final class FloatingHistoryPanel: NSPanel {
     private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
         guard let appState = appState else { return event }
 
+        // When search field is focused, pass most keys through for typing.
+        // But Esc should blur the search field.
+        if appState.isSearchFocused {
+            if Int(event.keyCode) == 53 {
+                // Blur search field by making the window itself first responder
+                self.makeFirstResponder(nil)
+                appState.isSearchFocused = false
+                return nil
+            }
+            return event
+        }
+
         let keyCode = Int(event.keyCode)
 
         // ⌘⇧V — paste as plain text
-        if keyCode == 9 && event.modifierFlags.contains([.command, .shift]) && !event.modifierFlags.contains(.option) {
+        if keyCode == 9 && event.modifierFlags.contains([.command, .shift]) {
             appState.pasteSelectedAsPlainText()
             hide()
             appState.clearSelection()
