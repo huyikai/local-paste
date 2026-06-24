@@ -378,10 +378,9 @@ private final class PreviewPanel: NSPanel {
         isFloatingPanel = true
         level = .floating
         title = "Preview"
-        appearance = NSAppearance(named: .aqua)  // force light mode for consistent text
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
-        backgroundColor = .white
+        backgroundColor = .windowBackgroundColor
 
         scrollView.hasVerticalScroller = true
         scrollView.borderType = .noBorder
@@ -406,7 +405,7 @@ private final class PreviewPanel: NSPanel {
         webView.frame = scrollView.bounds
         webView.autoresizingMask = [.width, .height]
         scrollView.documentView = webView
-        let css = "<style>body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:#1a1a1a;background:white}pre{background:#f5f5f5;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace;color:#1a1a1a}code{font:0.88em 'SF Mono',monospace;background:#f0f0f0;padding:2px 5px;border-radius:4px;color:#1a1a1a}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px;color:#555}</style>"
+        let css = "<style>:root{color-scheme:light dark}body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:CanvasText;background:Canvas}pre{background:ButtonFace;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace;color:CanvasText}code{font:0.88em 'SF Mono',monospace;background:ButtonFace;padding:2px 5px;border-radius:4px;color:CanvasText}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid GrayText;padding:6px 12px}blockquote{border-left:3px solid GrayText;margin-left:0;padding-left:16px;color:GrayText}</style>"
         var htmlStr = String(data: data, encoding: .utf8) ?? ""
         if htmlStr.contains("</style>") {
             htmlStr = htmlStr.replacingOccurrences(of: "</style>", with: "\(css)</style>")
