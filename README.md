@@ -1,8 +1,17 @@
 # LocalPaste 🗂️
 
+[![CI](https://github.com/huyikai/local-paste/actions/workflows/release.yml/badge.svg)](https://github.com/huyikai/local-paste/actions/workflows/release.yml)
+[![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-orange)](https://github.com/huyikai/local-paste)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A lightweight, local-only clipboard history manager for macOS.
 
 Monitor and search your clipboard history — all data stays on your machine. No subscriptions, no cloud, no App Store.
+
+## Screenshots
+
+<!-- TODO: add screenshots / GIF -->
+<!-- ![screenshot](screenshots/panel.png) -->
 
 ## Features
 
@@ -24,11 +33,38 @@ Monitor and search your clipboard history — all data stays on your machine. No
 
 ## Installation
 
+### Homebrew (recommended)
+
 ```bash
-git clone https://github.com/huyikai/local-paste
-cd local-paste
-make install        # Build, sign, install to /Applications
+brew tap huyikai/local-paste
+brew install --cask localpaste
 ```
+
+If you prefer not to add a tap, you can install directly:
+
+```bash
+brew install --cask huyikai/local-paste/localpaste
+```
+
+#### Update
+
+```bash
+brew update
+brew upgrade --cask localpaste
+```
+
+#### Uninstall
+
+```bash
+brew uninstall --cask localpaste
+brew untap huyikai/local-paste   # optional: remove the tap
+```
+
+### Manual download
+
+Download `LocalPaste.dmg` from the [latest release](https://github.com/huyikai/local-paste/releases/latest), open it, and drag **LocalPaste** to **Applications**.
+
+> If macOS shows "unidentified developer", right-click the app → **Open** to bypass Gatekeeper.
 
 Open `/Applications/LocalPaste.app` — clipboard icon appears in menu bar.
 
@@ -54,15 +90,64 @@ Open `/Applications/LocalPaste.app` — clipboard icon appears in menu bar.
 2. Enable **LocalPaste** in System Settings → Privacy & Security → Accessibility
 3. Restart LocalPaste
 
+## Why LocalPaste?
+
+| | LocalPaste | Cloud-based alternatives |
+|---|---|---|
+| Internet required | ❌ No | ✅ Often |
+| Account needed | ❌ No | ✅ Usually |
+| Data on your machine | ✅ Yes | ❌ On their servers |
+| Subscription | ❌ Free forever | 💰 Monthly fee |
+| Open source | ✅ MIT | ❌ Mostly closed |
+| Resource usage | ~30 MB RAM | 100–500 MB (Electron) |
+
 ## Build from source
 
 ```bash
-make build    # Release build
-make app      # .app bundle
-make install  # .app → /Applications
-make run      # Run from CLI
+make build           # Native arch release build
+make build-universal # Universal binary (arm64 + x86_64)
+make app             # .app bundle
+make dmg             # .app → DMG installer
+make install         # .app → /Applications
+make run             # Run from command line
 ```
+
+## Releasing
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will build a universal DMG and create a release automatically.
+The Homebrew cask always points to the latest release — users just run `brew upgrade --cask localpaste`.
+
+## FAQ
+
+<details>
+<summary><strong>"Unidentified developer" warning?</strong></summary>
+
+This happens because the app is ad-hoc signed (not notarized by Apple).
+Right-click the app in Finder → <strong>Open</strong> to bypass, or run:
+
+<pre>sudo xattr -d com.apple.quarantine /Applications/LocalPaste.app</pre>
+</details>
+
+<details>
+<summary><strong>Auto-paste doesn't work?</strong></summary>
+
+Make sure LocalPaste is enabled under<br>
+<strong>System Settings → Privacy & Security → Accessibility</strong>.<br>
+Restart the app after granting permission.
+</details>
+
+<details>
+<summary><strong>Where is the data stored?</strong></summary>
+
+<code>~/Library/Application Support/LocalPaste/</code> — a single JSON file.
+You can back it up, delete it to reset history, or symlink it to a cloud folder.
+</details>
 
 ## License
 
-MIT
+[MIT](LICENSE)

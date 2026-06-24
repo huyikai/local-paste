@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building $TAG (version $VERSION)"
+
+      - name: Sync Info.plist version
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" Info.plist
+
+      - name: Build universal binary
+        run: swift build -c release --arch arm64 --arch x86_64 --disable-sandbox
+
+      - name: Create .app bundle
+        run: |
+          BIN_PATH=$(swift build --show-bin-path -c release)
+          echo "Binary at: $BIN_PATH"
+          mkdir -p LocalPaste.app/Contents/MacOS LocalPaste.app/Contents/Resources
+          cp "$BIN_PATH/LocalPaste" LocalPaste.app/Contents/MacOS/
+          cp Info.plist LocalPaste.app/Contents/
+          swift Scripts/gen-icon.swift LocalPaste.app/Contents/Resources/icon.png
+          codesign --force --sign - LocalPaste.app
+
+      - name: Create DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p .dmg-staging
+          cp -R LocalPaste.app .dmg-staging/
+          ln -s /Applications .dmg-staging/Applications
+          hdiutil create -volname "LocalPaste" \
+            -srcfolder .dmg-staging \
+            -ov -format UDZO \
+            "LocalPaste-${VERSION}.dmg"
+          # Also create a versionless copy for Homebrew :latest URL
+          cp "LocalPaste-${VERSION}.dmg" "LocalPaste.dmg"
+          rm -rf .dmg-staging
+          ls -lh LocalPaste*.dmg
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "LocalPaste ${{ steps.version.outputs.tag }}"
+          files: |
+            LocalPaste-*.dmg
+            LocalPaste.dmg
+          generate_release_notes: true

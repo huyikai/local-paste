@@ -9,11 +9,13 @@ Packages/
 # macOS
 .DS_Store
 *.app
+*.dmg
 *.dSYM.zip
 *.dSYM
 
 # Build artifacts
 DerivedData/
+.dmg-staging/
 
 # Reasonix tool config
 .reasonix/
