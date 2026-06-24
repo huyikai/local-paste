@@ -3,9 +3,17 @@ import SwiftUI
 struct ItemRowView: View {
     @EnvironmentObject var appState: AppState
     let item: ClipboardItem
+
+    /// Look up the current item from appState so we always show fresh data.
+    private var currentItem: ClipboardItem {
+        appState.items.first(where: { $0.id == item.id }) ?? item
+    }
+
     @State private var showPinPopover = false
 
     var body: some View {
+        let item = currentItem
+
         HStack(spacing: 10) {
             Group {
                 if let icon = item.appIcon {
@@ -137,7 +145,8 @@ struct PinGroupPicker: View {
                         Text(group)
                             .foregroundColor(.primary)
                         Spacer()
-                        if item.pinGroup == group {
+                        let current = appState.items.first(where: { $0.id == item.id })
+                        if current?.pinGroup == group {
                             Image(systemName: "checkmark")
                                 .foregroundColor(.accentColor)
                         }
