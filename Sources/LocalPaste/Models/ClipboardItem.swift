@@ -93,9 +93,7 @@ struct ClipboardItem: Identifiable, Hashable {
     }
 
     /// Rendered rich-text preview (HTML or RTF), if available.
-    /// Text color is normalized to avoid white-on-light from dark-theme sources.
     var attributedPreview: AttributedString? {
-        // Try HTML first (richest)
         if let html = htmlData,
            let nsAttr = try? NSAttributedString(
                data: html,
@@ -103,9 +101,8 @@ struct ClipboardItem: Identifiable, Hashable {
                          .characterEncoding: String.Encoding.utf8.rawValue],
                documentAttributes: nil
            ) {
-            return normalizeColor(AttributedString(nsAttr))
+            return AttributedString(nsAttr)
         }
-        // Try RTF
         if let rtf = rtfData,
            let nsAttr = try? NSAttributedString(
                data: rtf,
@@ -113,15 +110,9 @@ struct ClipboardItem: Identifiable, Hashable {
                          .characterEncoding: String.Encoding.utf8.rawValue],
                documentAttributes: nil
            ) {
-            return normalizeColor(AttributedString(nsAttr))
+            return AttributedString(nsAttr)
         }
         return nil
-    }
-
-    private func normalizeColor(_ attr: AttributedString) -> AttributedString {
-        var result = attr
-        result.foregroundColor = nil  // remove any explicit color → use system default
-        return result
     }
 
     var contentTypeIcon: String {

@@ -378,9 +378,10 @@ private final class PreviewPanel: NSPanel {
         isFloatingPanel = true
         level = .floating
         title = "Preview"
+        appearance = NSAppearance(named: .aqua)  // force light mode for consistent text
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
-        backgroundColor = .windowBackgroundColor
+        backgroundColor = .white
 
         scrollView.hasVerticalScroller = true
         scrollView.borderType = .noBorder
@@ -397,7 +398,7 @@ private final class PreviewPanel: NSPanel {
         textView.textContainerInset = NSSize(width: 16, height: 16)
         textView.font = NSFont.systemFont(ofSize: 14)
         imageView.imageScaling = .scaleProportionallyUpOrDown
-        webView.setValue(false, forKey: "drawsBackground")
+        webView.setValue(true, forKey: "drawsBackground")
     }
 
     func showHTML(data: Data) {
@@ -405,7 +406,7 @@ private final class PreviewPanel: NSPanel {
         webView.frame = scrollView.bounds
         webView.autoresizingMask = [.width, .height]
         scrollView.documentView = webView
-        let css = "<style>body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:#222 !important;background:transparent}*,*::before,*::after{color:#222 !important;background-color:transparent !important}pre{background:#f4f4f4;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace}code{font:0.88em 'SF Mono',monospace;padding:2px 5px;border-radius:4px}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px}</style>"
+        let css = "<style>body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:#1a1a1a;background:white}pre{background:#f5f5f5;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace;color:#1a1a1a}code{font:0.88em 'SF Mono',monospace;background:#f0f0f0;padding:2px 5px;border-radius:4px;color:#1a1a1a}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px;color:#555}</style>"
         var htmlStr = String(data: data, encoding: .utf8) ?? ""
         if htmlStr.contains("</style>") {
             htmlStr = htmlStr.replacingOccurrences(of: "</style>", with: "\(css)</style>")
