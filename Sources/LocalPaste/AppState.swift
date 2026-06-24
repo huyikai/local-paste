@@ -233,8 +233,9 @@ final class AppState: ObservableObject {
     /// Toggle pin status.
     func togglePin(for item: ClipboardItem) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
-        objectWillChange.send()
-        items[idx].isPinned.toggle()
+        var updated = items.remove(at: idx)
+        updated.isPinned.toggle()
+        items.append(updated)
         sortItems()
         saveToDisk()
     }
