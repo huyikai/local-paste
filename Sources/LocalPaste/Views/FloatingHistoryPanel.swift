@@ -133,8 +133,13 @@ final class FloatingHistoryPanel: NSPanel {
             }
             return nil
         case 49: // Space — Quick Look
-            openQuickLook(appState: appState)
-            return nil
+            if QLPreviewPanel.shared()?.isVisible == true {
+                // QLPreviewPanel handles Space natively to close
+                return event
+            } else {
+                openQuickLook(appState: appState)
+                return nil
+            }
         case 53: // Escape
             closeQuickLookIfNeeded()
             hide()
@@ -252,15 +257,7 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         tempPreviewURL = tempURL
-
-        // Toggle Quick Look panel: Space opens, Space again closes
-        guard let qlPanel = QLPreviewPanel.shared() else { return }
-        if qlPanel.isVisible {
-            qlPanel.orderOut(nil)
-            cleanupTempPreview()
-        } else {
-            qlPanel.makeKeyAndOrderFront(nil)
-        }
+        QLPreviewPanel.shared()?.makeKeyAndOrderFront(nil)
     }
 
     private func closeQuickLookIfNeeded() {
