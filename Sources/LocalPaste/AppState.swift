@@ -265,12 +265,10 @@ final class AppState: ObservableObject {
     /// Toggle pin status.
     /// Set or clear the pin group for an item.
     func setPinGroup(for item: ClipboardItem, group: String?) {
-        objectWillChange.send()
-        var copy = items
-        if let idx = copy.firstIndex(where: { $0.id == item.id }) {
-            copy[idx].pinGroup = group
+        if let idx = items.firstIndex(where: { $0.id == item.id }) {
+            items[idx].pinGroup = group
         }
-        items = copy
+        items = items.map { $0 } // force new array assignment for @Published
         saveToDisk()
     }
 
