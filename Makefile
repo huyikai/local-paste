@@ -25,6 +25,8 @@ app: build icon
 		mkdir -p "$(APP_NAME).app/Contents/Resources" && \
 		swift Scripts/gen-icon.swift "$(APP_NAME).app/Contents/Resources/icon.png" 2>/dev/null || true; \
 	fi
+	@echo "  Signing..."
+	codesign --force --sign - "$(APP_NAME).app" 2>/dev/null || true
 	@echo "✅ $(APP_NAME).app created."
 	@echo "   Drag to Applications folder or run: make install"
 
