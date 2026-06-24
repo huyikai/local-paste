@@ -405,7 +405,7 @@ private final class PreviewPanel: NSPanel {
         webView.frame = scrollView.bounds
         webView.autoresizingMask = [.width, .height]
         scrollView.documentView = webView
-        let css = "<style>body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:#222}pre{background:#f4f4f4;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace}code{font:0.88em 'SF Mono',monospace;background:#f0f0f0;padding:2px 5px;border-radius:4px}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em;font-weight:600}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px;color:#555}</style>"
+        let css = "<style>body{font:-apple-system-body;padding:16px;margin:0;line-height:1.6;color:#222 !important;background:transparent}*,*::before,*::after{color:#222 !important;background-color:transparent !important}pre{background:#f4f4f4;padding:14px;border-radius:8px;overflow-x:auto;font:0.88em 'SF Mono',monospace}code{font:0.88em 'SF Mono',monospace;padding:2px 5px;border-radius:4px}pre code{background:none;padding:0}h1,h2,h3{margin-top:1em;margin-bottom:.4em}img{max-width:100%;border-radius:4px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:16px}</style>"
         var htmlStr = String(data: data, encoding: .utf8) ?? ""
         if htmlStr.contains("</style>") {
             htmlStr = htmlStr.replacingOccurrences(of: "</style>", with: "\(css)</style>")
