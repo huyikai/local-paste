@@ -285,9 +285,13 @@ final class AppStateTests: XCTestCase {
         appState.togglePin(for: first)
 
         // After toggle, the first item should have opposite pinned status
-        // (unless it was already pinned and there are other items)
         if let toggled = appState.items.first(where: { $0.id == first.id }) {
             XCTAssertNotEqual(toggled.isPinned, originalPin)
+            // Toggle again — should return to original
+            appState.togglePin(for: toggled)
+            if let back = appState.items.first(where: { $0.id == first.id }) {
+                XCTAssertEqual(back.isPinned, originalPin)
+            }
         }
     }
 
