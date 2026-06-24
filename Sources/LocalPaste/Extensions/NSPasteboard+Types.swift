@@ -56,30 +56,38 @@ enum PasteboardTypes {
 
 extension NSPasteboard {
 
-    /// Read all available data types from the pasteboard and return as a
-    /// dictionary of [UTI-string : Data]. This preserves every format so
-    /// we can write it all back later.
-    func readAllTypes() -> [String: Data] {
+    /// Read all available data types from the pasteboard.
+    /// Returns data dictionary AND the original type order (richest first).
+    func readAllTypes() -> (data: [String: Data], order: [String]) {
         guard let types = pasteboardItems?.first?.types ?? self.types else {
-            return [:]
+            return ([:], [])
         }
 
         var result: [String: Data] = [:]
+        var order: [String] = []
         for type in types {
             let uti = type.rawValue
             if let data = data(forType: type) {
                 result[uti] = data
+                order.append(uti)
             }
         }
-        return result
+        return (result, order)
     }
 
-    /// Write a dictionary of [UTI-string : Data] back to the pasteboard.
-    /// This restores the clipboard entry with all its original formats.
-    func writeAllTypes(_ dataMap: [String: Data]) {
+    /// Write types back to pasteboard in a specific order (richest format first).
+    /// This ensures receiving apps pick the best available format.
+    func writeAllTypes(dataMap: [String: Data], order: [String]) {
         clearContents()
         let items = [NSPasteboardItem()]
-        for (uti, data) in dataMap {
+        // Write in the original order — richest format first
+        for uti in order {
+            guard let data = dataMap[uti] else { continue }
+            let type = NSPasteboard.PasteboardType(uti)
+            items[0].setData(data, forType: type)
+        }
+        // Also write any types not in the order list (unlikely but safe)
+        for (uti, data) in dataMap where !order.contains(uti) {
             let type = NSPasteboard.PasteboardType(uti)
             items[0].setData(data, forType: type)
         }

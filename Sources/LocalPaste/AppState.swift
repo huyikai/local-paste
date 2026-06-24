@@ -81,7 +81,7 @@ final class AppState: ObservableObject {
               let item = items.first(where: { $0.id == id }),
               let text = item.plainText else { return }
 
-        pasteboardManager.writeData([UTType.utf8PlainText.identifier: text.data(using: .utf8)!])
+        pasteboardManager.writeData([UTType.utf8PlainText.identifier: text.data(using: .utf8)!], order: [UTType.utf8PlainText.identifier])
 
         if let idx = items.firstIndex(where: { $0.id == item.id }) {
             var refreshed = items.remove(at: idx)

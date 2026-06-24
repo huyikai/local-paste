@@ -8,6 +8,9 @@ struct ClipboardItem: Identifiable, Hashable {
     var timestamp: Date
     /// Raw pasteboard data keyed by UTI string — preserves all formats.
     let data: [String: Data]
+    /// Original order of UTI types on the pasteboard (richest first).
+    /// Preserved so the receiving app picks the best available format.
+    let typeOrder: [String]
     /// The application name that provided the content (if available).
     let appName: String?
     /// The source application icon as PNG data (if available).

@@ -18,6 +18,7 @@ private func makeItem(data: [String: Data] = [:],
         id: id,
         timestamp: timestamp,
         data: itemData,
+        typeOrder: Array(itemData.keys),
         appName: "TestApp",
         appIconData: nil,
         isPinned: pinned
@@ -149,7 +150,7 @@ final class PasteboardTypesTests: XCTestCase {
         pb.clearContents()
         pb.setString("test string", forType: .string)
         let result = pb.readAllTypes()
-        XCTAssertFalse(result.isEmpty)
+        XCTAssertFalse(result.data.isEmpty)
     }
 }
 
@@ -240,9 +241,11 @@ final class AppStateTests: XCTestCase {
         let data = [UTType.utf8PlainText.identifier: "dup".data(using: .utf8)!]
         let id = UUID()
         let item1 = ClipboardItem(id: id, timestamp: Date(timeIntervalSince1970: 1000),
-                                   data: data, appName: nil, appIconData: nil, isPinned: false)
+                                   data: data, typeOrder: Array(data.keys),
+                                   appName: nil, appIconData: nil, isPinned: false)
         let item2 = ClipboardItem(id: id, timestamp: Date(timeIntervalSince1970: 2000),
-                                   data: data, appName: nil, appIconData: nil, isPinned: false)
+                                   data: data, typeOrder: Array(data.keys),
+                                   appName: nil, appIconData: nil, isPinned: false)
 
         appState.insertItem(item1)
         appState.insertItem(item2)

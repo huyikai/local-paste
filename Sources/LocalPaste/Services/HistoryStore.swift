@@ -10,6 +10,7 @@ final class HistoryStore {
         let id: UUID
         let timestamp: Date
         let data: [String: Data]
+        let typeOrder: [String]
         let appName: String?
         let appIconData: Data?
         let isPinned: Bool
@@ -18,6 +19,7 @@ final class HistoryStore {
             self.id = item.id
             self.timestamp = item.timestamp
             self.data = item.data
+            self.typeOrder = item.typeOrder
             self.appName = item.appName
             self.appIconData = item.appIconData
             self.isPinned = item.isPinned
@@ -28,6 +30,7 @@ final class HistoryStore {
                 id: id,
                 timestamp: timestamp,
                 data: data,
+                typeOrder: typeOrder,
                 appName: appName,
                 appIconData: appIconData,
                 isPinned: isPinned
