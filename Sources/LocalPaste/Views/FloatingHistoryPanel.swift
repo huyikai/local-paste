@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
-import Quartz
+import WebKit
+import UniformTypeIdentifiers
 
 /// A floating, always-on-top panel that shows clipboard history when the
 /// global hotkey (⌥⌘V) is pressed.
@@ -12,10 +13,7 @@ final class FloatingHistoryPanel: NSPanel {
     private var localEventMonitor: Any?
     /// The frontmost application before our panel appeared, so we can restore focus.
     private var previousAppBeforePanel: NSRunningApplication?
-    /// Temporary file URL for Quick Look preview.
-    private var tempPreviewURL: URL?
-    /// True while QLPreviewPanel was opened by us — prevents windowDidResignKey
-    /// from hiding the history panel while Quick Look is active.
+    /// True while our preview panel is open.
     private var isQuickLookOpen = false
 
     // MARK: - Init
@@ -75,8 +73,6 @@ final class FloatingHistoryPanel: NSPanel {
 
     @objc func windowDidBecomeKey(_ notification: Notification) {
         installKeyboardMonitor()
-        // Register as Quick Look data source for this panel
-        QLPreviewPanel.shared().dataSource = self
     }
 
     @objc func windowDidResignKey(_ notification: Notification) {
@@ -137,11 +133,11 @@ final class FloatingHistoryPanel: NSPanel {
                 self?.performPaste(appState: appState)
             }
             return nil
-        case 49: // Space — Quick Look
-            if let ql = QLPreviewPanel.shared(), ql.isVisible {
-                ql.close()
+        case 49: // Space — Quick Look / Preview
+            if let pp = previewPanel, pp.isVisible {
+                pp.close()
+                previewPanel = nil
                 isQuickLookOpen = false
-                cleanupTempPreview()
             } else {
                 openQuickLook(appState: appState)
             }
@@ -242,48 +238,55 @@ final class FloatingHistoryPanel: NSPanel {
         guard let id = appState.selectedItemID,
               let item = appState.items.first(where: { $0.id == id }) else { return }
 
-        // Build a temp file based on the dominant content type
-        let tempDir = FileManager.default.temporaryDirectory
-        let tempURL: URL
-
-        if item.image != nil, let pngData = item.data[UTType.png.identifier] {
-            tempURL = tempDir.appendingPathComponent("localpaste-preview.png")
-            try? pngData.write(to: tempURL)
-        } else if let rtfData = item.rtfData {
-            tempURL = tempDir.appendingPathComponent("localpaste-preview.rtf")
-            try? rtfData.write(to: tempURL)
-        } else if let htmlData = item.htmlData {
-            tempURL = tempDir.appendingPathComponent("localpaste-preview.html")
-            try? htmlData.write(to: tempURL)
-        } else if let text = item.plainText {
-            tempURL = tempDir.appendingPathComponent("localpaste-preview.txt")
-            try? text.write(to: tempURL, atomically: true, encoding: .utf8)
-        } else {
-            return // No previewable content
+        if let previewPanel = previewPanel, previewPanel.isVisible {
+            previewPanel.close()
+            return
         }
 
-        tempPreviewURL = tempURL
+        let panel = PreviewPanel(contentRect: NSRect(x: 0, y: 0, width: 480, height: 400))
+        panel.center()
         isQuickLookOpen = true
-        QLPreviewPanel.shared()?.makeKeyAndOrderFront(nil)
+
+        // Show based on content type
+        if let image = item.image {
+            // Use PNG data if available, otherwise create from NSImage
+            if let pngData = item.data[UTType.png.identifier] {
+                panel.showImage(data: pngData)
+            } else if let tiffData = item.data[UTType.tiff.identifier] {
+                panel.showImage(data: tiffData)
+            } else if let tiff = image.tiffRepresentation {
+                panel.showImage(data: tiff)
+            }
+        } else if let htmlData = item.htmlData {
+            panel.showHTML(data: htmlData)
+        } else if let rtfData = item.rtfData {
+            panel.showRTF(data: rtfData)
+        } else if let text = item.plainText {
+            panel.showText(text)
+        } else {
+            isQuickLookOpen = false
+            return
+        }
+
+        previewPanel = panel
+        panel.onClose = { [weak self] in
+            self?.isQuickLookOpen = false
+            self?.previewPanel = nil
+        }
+        panel.makeKeyAndOrderFront(nil)
     }
 
+    private var previewPanel: PreviewPanel?
+
     private func closeQuickLookIfNeeded() {
-        guard let ql = QLPreviewPanel.shared() else { return }
-        if ql.isVisible {
-            ql.close()
-        }
+        previewPanel?.close()
+        previewPanel = nil
         isQuickLookOpen = false
-        cleanupTempPreview()
     }
 
     private func cleanupTempPreview() {
-        if let url = tempPreviewURL {
-            try? FileManager.default.removeItem(at: url)
-            tempPreviewURL = nil
-        }
+        // No temp files needed with custom preview
     }
-
-    // MARK: - Quick Look data source conformance
 
     // MARK: - Actions
 
@@ -358,33 +361,79 @@ final class FloatingHistoryPanel: NSPanel {
     }
 }
 
-// MARK: - Quick Look data source
+// MARK: - Custom preview panel
 
-extension FloatingHistoryPanel: QLPreviewPanelDataSource, QLPreviewPanelDelegate {
-    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
-        tempPreviewURL != nil ? 1 : 0
+private final class PreviewPanel: NSPanel {
+
+    var onClose: (() -> Void)?
+
+    private let imageView = NSImageView()
+    private let textView = NSTextView()
+    private let webView = WKWebView()
+
+    init(contentRect: NSRect) {
+        super.init(contentRect: contentRect,
+                   styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
+                   backing: .buffered, defer: false)
+
+        isFloatingPanel = true
+        level = .floating
+        title = "Preview"
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        isMovableByWindowBackground = true
+
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 12, height: 12)
+
+        webView.setValue(false, forKey: "drawsBackground")
     }
 
-    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> QLPreviewItem! {
-        tempPreviewURL as QLPreviewItem?
+    func showImage(data: Data) {
+        imageView.image = NSImage(data: data)
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.frame = contentView?.bounds ?? .zero
+        imageView.autoresizingMask = [.width, .height]
+        contentView = imageView
+        makeKeyAndOrderFront(nil)
     }
 
-    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
-        return true
+    func showHTML(data: Data) {
+        webView.frame = contentView?.bounds ?? .zero
+        webView.autoresizingMask = [.width, .height]
+        contentView = webView
+        webView.load(data, mimeType: "text/html", characterEncodingName: "UTF-8",
+                     baseURL: URL(fileURLWithPath: "/"))
+        makeKeyAndOrderFront(nil)
     }
 
-    override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        panel.dataSource = self
-        panel.delegate = self
+    func showRTF(data: Data) {
+        textView.frame = contentView?.bounds ?? .zero
+        textView.autoresizingMask = [.width, .height]
+        contentView = textView
+        if let attr = try? NSAttributedString(data: data,
+                                               options: [.documentType: NSAttributedString.DocumentType.rtf],
+                                               documentAttributes: nil) {
+            textView.textStorage?.setAttributedString(attr)
+        }
+        makeKeyAndOrderFront(nil)
     }
 
-    override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        isQuickLookOpen = false
-        cleanupTempPreview()
+    func showText(_ text: String) {
+        textView.frame = contentView?.bounds ?? .zero
+        textView.autoresizingMask = [.width, .height]
+        contentView = textView
+        textView.string = text
+        makeKeyAndOrderFront(nil)
+    }
+
+    override func close() {
+        onClose?()
+        orderOut(nil)
     }
 }
 
-/// Global state shared across FloatingHistoryPanel instances.
 private enum LocalPasteState {
     static var lastAccessibilityPrompt: Date?
 }
