@@ -253,11 +253,13 @@ final class FloatingHistoryPanel: NSPanel {
 
         tempPreviewURL = tempURL
 
-        // Show Quick Look panel
-        if QLPreviewPanel.shared().isVisible {
-            QLPreviewPanel.shared().reloadData()
+        // Toggle Quick Look panel: Space opens, Space again closes
+        guard let qlPanel = QLPreviewPanel.shared() else { return }
+        if qlPanel.isVisible {
+            qlPanel.orderOut(nil)
+            cleanupTempPreview()
         } else {
-            QLPreviewPanel.shared().makeKeyAndOrderFront(nil)
+            qlPanel.makeKeyAndOrderFront(nil)
         }
     }
 
