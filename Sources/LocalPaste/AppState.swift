@@ -146,6 +146,9 @@ final class AppState: ObservableObject {
 
         // Expose globally for AppDelegate
         AppState.shared = self
+
+        // Restore user preferences
+        loadSettings()
     }
 
     static private(set) weak var shared: AppState?
@@ -261,7 +264,7 @@ final class AppState: ObservableObject {
     }
 
     private func saveToDisk() {
-        store.save(items)
+        store.save(items, limit: maxHistoryCount)
     }
 
     private func saveSettings() {

@@ -97,9 +97,10 @@ final class HistoryStore {
         }
     }
 
-    /// Save history to disk.
-    func save(_ items: [ClipboardItem]) {
-        let limited = Array(items.prefix(maxItems))
+    /// Save history to disk, capping at the given limit.
+    func save(_ items: [ClipboardItem], limit: Int? = nil) {
+        let cap = limit ?? maxItems
+        let limited = Array(items.prefix(cap))
         let storableItems = limited.map { StorableItem(from: $0) }
 
         do {

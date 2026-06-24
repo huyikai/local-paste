@@ -51,6 +51,11 @@ final class PasteboardManager {
         let (dataMap, typeOrder) = pasteboard.readAllTypes()
         guard !dataMap.isEmpty else { return nil }
 
+        // Also guard against our own writes
+        if dataMap.keys.allSatisfy({ $0.hasPrefix("com.localpaste.") }) {
+            return nil
+        }
+
         let (name, iconData) = frontmostAppInfo()
 
         return ClipboardItem(
@@ -77,10 +82,6 @@ final class PasteboardManager {
     }
 
     // MARK: - Helpers
-
-    private func getFrontmostAppName() -> String? {
-        frontmostAppInfo().0
-    }
 
     private func frontmostAppInfo() -> (String?, Data?) {
         guard let app = NSWorkspace.shared.frontmostApplication else {

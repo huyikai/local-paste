@@ -17,7 +17,7 @@ struct LocalPasteApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var cancellable: Any?
+    private var cancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

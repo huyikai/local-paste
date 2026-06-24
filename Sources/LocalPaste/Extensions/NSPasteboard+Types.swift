@@ -10,7 +10,7 @@ enum PasteboardTypes {
     // Standard text types
     static let plainText     = "public.utf8-plain-text"
     static let rtf           = "public.rtf"
-    static let rtfd          = "com.appwork.flat-rtfd"
+    static let rtfd          = "com.apple.flat-rtfd"
     static let html          = "public.html"
 
     // Image types

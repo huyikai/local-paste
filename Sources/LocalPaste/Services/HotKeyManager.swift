@@ -1,4 +1,3 @@
-import AppKit
 import Carbon
 
 /// Manages a global hotkey using the Carbon Event Manager API.
@@ -22,7 +21,7 @@ final class HotKeyManager {
 
     /// Register the global hotkey ⌥⌘V.
     func register() -> Bool {
-        // ⌥ (option) = cmdKey, ⌘ (command) = optionKey
+        // ⌘ (command) = cmdKey, ⌥ (option) = optionKey
         // V = kVK_ANSI_V (9)
         let modifiers: UInt32 = UInt32(cmdKey) | UInt32(optionKey)
         let keyCode = UInt32(kVK_ANSI_V)

@@ -50,7 +50,7 @@ struct ClipboardItem: Identifiable, Hashable {
     }
 
     var fileURLs: [URL]? {
-        guard let data = data[UTType.fileURL.identifier] ?? data["NSFilenamesPboardType"] else {
+        guard let data = data[UTType.fileURL.identifier] ?? data[PasteboardTypes.filenames] else {
             return nil
         }
         // File URLs can be stored as plist array of strings or as file URL data
@@ -65,7 +65,7 @@ struct ClipboardItem: Identifiable, Hashable {
     }
 
     var color: NSColor? {
-        guard let data = data["com.apple.cocoa.pasteboard.color"] else {
+        guard let data = data[PasteboardTypes.color] else {
             return nil
         }
         return try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: data)
@@ -117,8 +117,8 @@ struct ClipboardItem: Identifiable, Hashable {
 
     var contentTypeIcon: String {
         if data.keys.contains(where: { PasteboardTypes.imageTypes.contains($0) }) { return "photo" }
-        if data.keys.contains(where: { $0 == UTType.fileURL.identifier || $0 == "NSFilenamesPboardType" }) { return "doc" }
-        if data.keys.contains("com.apple.cocoa.pasteboard.color") { return "paintpalette" }
+        if data.keys.contains(where: { $0 == UTType.fileURL.identifier || $0 == PasteboardTypes.filenames }) { return "doc" }
+        if data.keys.contains(PasteboardTypes.color) { return "paintpalette" }
         return "text.alignleft"
     }
 
