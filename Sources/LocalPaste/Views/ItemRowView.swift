@@ -3,6 +3,12 @@ import SwiftUI
 struct ItemRowView: View {
     @EnvironmentObject var appState: AppState
     let item: ClipboardItem
+    @State private var pinned: Bool
+
+    init(item: ClipboardItem) {
+        self.item = item
+        self._pinned = State(initialValue: item.isPinned)
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -50,7 +56,7 @@ struct ItemRowView: View {
                     Text(item.timestamp, style: .time)
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
-                    if item.isPinned {
+                    if pinned {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 9))
                             .foregroundColor(.accentColor)
@@ -60,13 +66,16 @@ struct ItemRowView: View {
 
             Spacer(minLength: 4)
 
-            Button(action: { appState.togglePin(for: item) }) {
-                Image(systemName: item.isPinned ? "pin.fill" : "pin")
+            Button(action: {
+                appState.togglePin(for: item)
+                pinned.toggle()
+            }) {
+                Image(systemName: pinned ? "pin.fill" : "pin")
                     .font(.system(size: 13))
-                    .foregroundColor(item.isPinned ? .accentColor : Color.secondary)
+                    .foregroundColor(pinned ? .accentColor : Color.secondary)
             }
             .buttonStyle(.plain)
-            .help(item.isPinned ? "Unpin" : "Pin")
+            .help(pinned ? "Unpin" : "Pin")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -81,6 +90,7 @@ struct ItemRowView: View {
         )
         .onTapGesture { appState.selectedItemID = item.id }
         .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
+        .onChange(of: item.isPinned) { pinned = $0 }
         .contextMenu {
             Button(action: { appState.copyItemToPasteboard(item) }) {
                 Label("Paste", systemImage: "doc.on.clipboard")
