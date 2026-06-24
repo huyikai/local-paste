@@ -247,7 +247,7 @@ final class AppState: ObservableObject {
     }
 
     private func sortItems() {
-        items.sort { a, b in
+        items = items.sorted { a, b in
             if a.isPinned != b.isPinned {
                 return a.isPinned && !b.isPinned
             }

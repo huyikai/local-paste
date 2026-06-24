@@ -554,7 +554,11 @@ struct HistoryPanelContentView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Button(action: { NSApp.sendAction(Selector(("showSettingsWindow:")), to: NSApp.delegate, from: nil) }) {
+                Button(action: {
+                    if NSApp.delegate?.responds(to: Selector(("showSettingsWindow:"))) == true {
+                        NSApp.delegate?.perform(Selector(("showSettingsWindow:")))
+                    }
+                }) {
                     Image(systemName: "gearshape")
                 }
                 .buttonStyle(.plain)
