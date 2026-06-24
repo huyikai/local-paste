@@ -26,6 +26,11 @@ struct ItemRowView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(maxHeight: 60)
                         .cornerRadius(4)
+                } else if let attr = item.attributedPreview {
+                    Text(attr)
+                        .lineLimit(3)
+                        .font(.body)
+                        .foregroundColor(.primary)
                 } else {
                     Text(item.displayText)
                         .lineLimit(2)

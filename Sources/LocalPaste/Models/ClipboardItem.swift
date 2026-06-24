@@ -92,6 +92,31 @@ struct ClipboardItem: Identifiable, Hashable {
         return "[Clipboard Data (\(data.count) types)]"
     }
 
+    /// Rendered rich-text preview (HTML or RTF), if available.
+    var attributedPreview: AttributedString? {
+        // Try HTML first (richest)
+        if let html = htmlData,
+           let nsAttr = try? NSAttributedString(
+               data: html,
+               options: [.documentType: NSAttributedString.DocumentType.html,
+                         .characterEncoding: String.Encoding.utf8.rawValue],
+               documentAttributes: nil
+           ) {
+            return AttributedString(nsAttr)
+        }
+        // Try RTF
+        if let rtf = rtfData,
+           let nsAttr = try? NSAttributedString(
+               data: rtf,
+               options: [.documentType: NSAttributedString.DocumentType.rtf,
+                         .characterEncoding: String.Encoding.utf8.rawValue],
+               documentAttributes: nil
+           ) {
+            return AttributedString(nsAttr)
+        }
+        return nil
+    }
+
     var contentTypeIcon: String {
         if data.keys.contains(where: { PasteboardTypes.imageTypes.contains($0) }) { return "photo" }
         if data.keys.contains(where: { $0 == UTType.fileURL.identifier || $0 == "NSFilenamesPboardType" }) { return "doc" }
