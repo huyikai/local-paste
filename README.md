@@ -45,7 +45,6 @@ Open `/Applications/LocalPaste.app` — clipboard icon appears in menu bar.
 | Close panel | `Esc` or click outside |
 | Pin / Unpin | Pin button or right-click |
 | Paste without formatting | `⌘⇧V` or right-click |
-| Settings | ⚙ button in panel footer |
 
 ### Auto-paste (`⌘V` after Enter)
 

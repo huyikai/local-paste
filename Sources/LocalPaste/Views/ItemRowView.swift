@@ -63,7 +63,7 @@ struct ItemRowView: View {
             Button(action: { appState.togglePin(for: item) }) {
                 Image(systemName: item.isPinned ? "pin.fill" : "pin")
                     .font(.system(size: 12))
-                    .foregroundColor(item.isPinned ? .accentColor : .secondary.opacity(0.45))
+                    .foregroundColor(item.isPinned ? .accentColor : .secondary)
             }
             .buttonStyle(.plain)
             .help(item.isPinned ? "Unpin" : "Pin")
