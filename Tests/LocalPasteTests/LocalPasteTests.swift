@@ -288,6 +288,26 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(appState.displayItems[0].plainText, "c")
     }
 
+    func testDeletePinGroupClearsItems() {
+        let appState = AppState()
+        appState.resetForTesting()
+
+        appState.insertItem(makeItem(text: "a"))
+        appState.insertItem(makeItem(text: "b"))
+        appState.insertItem(makeItem(text: "c"))
+
+        // Pin via setPinGroup to register the group
+        appState.setPinGroup(for: appState.items.first(where: { $0.plainText == "a" })!, group: "Work")
+        appState.setPinGroup(for: appState.items.first(where: { $0.plainText == "b" })!, group: "Work")
+
+        XCTAssertTrue(appState.pinGroups.contains("Work"))
+        appState.deletePinGroup("Work")
+
+        XCTAssertFalse(appState.pinGroups.contains("Work"))
+        XCTAssertEqual(appState.items.filter { $0.pinGroup != nil }.count, 0)
+        XCTAssertEqual(appState.items.count, 3)
+    }
+
     func testClearHistory() {
         let appState = AppState()
         appState.resetForTesting()

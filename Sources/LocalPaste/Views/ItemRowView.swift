@@ -137,24 +137,34 @@ struct PinGroupPicker: View {
             Divider()
 
             ForEach(appState.pinGroups, id: \.self) { group in
-                Button(action: {
-                    appState.setPinGroup(for: item, group: group)
-                    dismiss()
-                }) {
-                    HStack {
-                        Text(group)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        let current = appState.items.first(where: { $0.id == item.id })
-                        if current?.pinGroup == group {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.accentColor)
+                HStack {
+                    Button(action: {
+                        appState.setPinGroup(for: item, group: group)
+                        dismiss()
+                    }) {
+                        HStack {
+                            Text(group)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            let current = appState.items.first(where: { $0.id == item.id })
+                            if current?.pinGroup == group {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .buttonStyle(.plain)
+
+                    Button(action: { appState.deletePinGroup(group) }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete group")
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
             }
 
             Divider()

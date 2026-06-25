@@ -10,18 +10,16 @@ struct SettingsView: View {
                 .tabItem {
                     Label("General", systemImage: "gearshape")
                 }
-
+            groupsTab
+                .tabItem {
+                    Label("Groups", systemImage: "bookmark")
+                }
             shortcutsTab
                 .tabItem {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
-
-            aboutTab
-                .tabItem {
-                    Label("About", systemImage: "info.circle")
-                }
         }
-        .frame(width: 420, height: 280)
+        .frame(width: 420, height: 300)
     }
 
     // MARK: - General
@@ -58,6 +56,40 @@ struct SettingsView: View {
                         toggleLaunchAtLogin(enabled: newValue)
                     }
                 ))
+            }
+        }
+        .padding()
+    }
+
+    // MARK: - Groups
+
+    private var groupsTab: some View {
+        Form {
+            Section("Pin Groups") {
+                if appState.pinGroups.isEmpty {
+                    Text("No groups yet. Pin an item to create a group.")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                } else {
+                    ForEach(appState.pinGroups, id: \.self) { group in
+                        HStack {
+                            Image(systemName: "bookmark")
+                                .foregroundColor(.accentColor)
+                            Text(group)
+                            Spacer()
+                            Text("\(appState.items.filter { $0.pinGroup == group }.count) items")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button(action: { appState.deletePinGroup(group) }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Delete group")
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
             }
         }
         .padding()

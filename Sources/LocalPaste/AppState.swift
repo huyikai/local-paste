@@ -268,7 +268,21 @@ final class AppState: ObservableObject {
         if let idx = items.firstIndex(where: { $0.id == item.id }) {
             items[idx].pinGroup = group
         }
-        items = items.map { $0 } // force new array assignment for @Published
+        if let g = group, !pinGroups.contains(g) {
+            pinGroups.append(g)
+        }
+        items = items.map { $0 }
+        saveToDisk()
+    }
+
+    /// Delete a pin group and clear it from all items.
+    func deletePinGroup(_ group: String) {
+        pinGroups.removeAll { $0 == group }
+        for idx in items.indices where items[idx].pinGroup == group {
+            items[idx].pinGroup = nil
+        }
+        if selectedPinGroup == group { selectedPinGroup = nil }
+        items = items.map { $0 }
         saveToDisk()
     }
 
