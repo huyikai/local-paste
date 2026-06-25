@@ -267,7 +267,6 @@ final class FloatingHistoryPanel: NSPanel {
 
         // Show based on content type
         if let image = item.image {
-            // Use PNG data if available, otherwise create from NSImage
             if let pngData = item.data[UTType.png.identifier] {
                 panel.showImage(data: pngData)
             } else if let tiffData = item.data[UTType.tiff.identifier] {
@@ -275,12 +274,12 @@ final class FloatingHistoryPanel: NSPanel {
             } else if let tiff = image.tiffRepresentation {
                 panel.showImage(data: tiff)
             }
+        } else if let color = item.displayColor {
+            panel.showColor(color: color)
         } else if let htmlData = item.htmlData {
             panel.showHTML(data: htmlData)
         } else if let rtfData = item.rtfData {
             panel.showRTF(data: rtfData)
-        } else if let color = item.displayColor {
-            panel.showColor(color: color)
         } else if let text = item.plainText {
             panel.showText(text)
         } else {
