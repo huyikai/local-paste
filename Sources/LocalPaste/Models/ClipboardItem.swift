@@ -106,6 +106,7 @@ struct ClipboardItem: Identifiable, Hashable {
     }
 
     /// Rendered rich-text preview (HTML or RTF), if available.
+    /// Font is normalized to a uniform size for list consistency.
     var attributedPreview: AttributedString? {
         if let html = htmlData,
            let nsAttr = try? NSAttributedString(
@@ -114,7 +115,9 @@ struct ClipboardItem: Identifiable, Hashable {
                          .characterEncoding: String.Encoding.utf8.rawValue],
                documentAttributes: nil
            ) {
-            return AttributedString(nsAttr)
+            var attr = AttributedString(nsAttr)
+            attr.font = .system(size: 13)
+            return attr
         }
         if let rtf = rtfData,
            let nsAttr = try? NSAttributedString(
@@ -123,7 +126,9 @@ struct ClipboardItem: Identifiable, Hashable {
                          .characterEncoding: String.Encoding.utf8.rawValue],
                documentAttributes: nil
            ) {
-            return AttributedString(nsAttr)
+            var attr = AttributedString(nsAttr)
+            attr.font = .system(size: 13)
+            return attr
         }
         return nil
     }
