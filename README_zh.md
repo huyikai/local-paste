@@ -3,6 +3,7 @@
 [![CI](https://github.com/huyikai/local-paste/actions/workflows/release.yml/badge.svg)](https://github.com/huyikai/local-paste/actions/workflows/release.yml)
 [![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-orange)](https://github.com/huyikai/local-paste)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 [中文](README_zh.md) / [English](README.md)
 
 轻量级 macOS 剪贴板历史管理器，纯本地运行。
