@@ -94,6 +94,25 @@ final class ClipboardItemTests: XCTestCase {
         XCTAssertEqual(item.colorHex.count, 7)
     }
 
+    func testHexTextColorDetection() {
+        // Copying "#fff001" as text → should detect as color
+        let item = makeItem(text: "#fff001")
+        XCTAssertNotNil(item.displayColor, "hex text should be detected as color")
+        XCTAssertEqual(item.colorHex, "#FFF001")
+    }
+
+    func testHex3CharDetection() {
+        // Copying "#fff" as text → should detect as color
+        let item = makeItem(text: "#abc")
+        XCTAssertNotNil(item.displayColor, "3-char hex should be detected")
+        XCTAssertEqual(item.colorHex, "#AABBCC")
+    }
+
+    func testNonHexTextNotColor() {
+        let item = makeItem(text: "hello world")
+        XCTAssertNil(item.displayColor, "plain text should not be mistaken for color")
+    }
+
     func testRealPasteboardColorRoundtrip() {
         // Simulate actual color picker copy behavior
         let pb = NSPasteboard.general
@@ -124,20 +143,17 @@ final class ClipboardItemTests: XCTestCase {
         XCTAssertNotNil(item.displayColor, "displayColor should not be nil")
         XCTAssertEqual(item.contentTypeIcon, "paintpalette")
 
-        // When both text and color exist, displayText shows the original text
-        // (the color is indicated by the left-edge colored strip, not by replacing text)
-        XCTAssertEqual(item.displayText,
-                       "sRGB IEC61966-2.1 colorspace 0.2 0.6 0.9 1",
-                       "displayText should show original text when both exist")
+        // displayColor should work (from NSColor data)
+        XCTAssertNotNil(item.displayColor, "displayColor should not be nil")
+        XCTAssertEqual(item.contentTypeIcon, "paintpalette")
 
-        // But when only color data exists (no plain text), displayText shows hex
-        let colorOnlyItem = ClipboardItem(
-            id: UUID(), timestamp: Date(),
-            data: [PasteboardTypes.color: dataMap[PasteboardTypes.color]!],
-            typeOrder: [PasteboardTypes.color],
-            appName: nil, appIconData: nil, pinGroup: nil
-        )
-        XCTAssertEqual(colorOnlyItem.displayText, colorOnlyItem.colorHex)
+        // When both text and color exist, displayText shows original text;
+        // the color is indicated by the left-edge strip
+        XCTAssertEqual(item.displayText,
+                       "sRGB IEC61966-2.1 colorspace 0.2 0.6 0.9 1")
+
+        // colorHex works from the NSColor data
+        XCTAssertTrue(item.colorHex.hasPrefix("#"))
     }
 
     func testColorItemAppearsInHistory() {

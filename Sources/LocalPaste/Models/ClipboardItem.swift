@@ -72,25 +72,24 @@ struct ClipboardItem: Identifiable, Hashable {
     }
 
     /// Display-ready NSColor for swatch rendering.
+    /// Detects color from NSColor data OR from hex text like "#FF6B35".
     var displayColor: NSColor? {
-        color
+        if let c = color { return c }
+        if let text = plainText?.trimmingCharacters(in: .whitespacesAndNewlines) {
+            return NSColor.fromHex(text)
+        }
+        return nil
     }
 
-    /// Hex string for the color, e.g. "#FF6B35"
+    /// Hex string for color display.
     var colorHex: String {
-        guard let nsColor = color else { return "[Color]" }
-        let rgb: NSColor
-        if let sRGB = nsColor.usingColorSpace(.sRGB) {
-            rgb = sRGB
-        } else if let generic = nsColor.usingColorSpace(.genericRGB) {
-            rgb = generic
-        } else {
-            rgb = nsColor
+        if let c = displayColor {
+            let r = Int(round(c.redComponent * 255))
+            let g = Int(round(c.greenComponent * 255))
+            let b = Int(round(c.blueComponent * 255))
+            return String(format: "#%02X%02X%02X", r, g, b)
         }
-        let r = Int(round(rgb.redComponent * 255))
-        let g = Int(round(rgb.greenComponent * 255))
-        let b = Int(round(rgb.blueComponent * 255))
-        return String(format: "#%02X%02X%02X", r, g, b)
+        return "[Color]"
     }
 
     /// Returns a short textual summary for the list display
@@ -154,5 +153,30 @@ struct ClipboardItem: Identifiable, Hashable {
 
     static func == (lhs: ClipboardItem, rhs: ClipboardItem) -> Bool {
         lhs.id == rhs.id
+    }
+}
+
+// MARK: - NSColor hex parsing
+
+private extension NSColor {
+    /// Parse hex color strings like "#FF6B35", "#fff", "FF6B35"
+    static func fromHex(_ hex: String) -> NSColor? {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("#") { s.removeFirst() }
+
+        let r, g, b: CGFloat
+        switch s.count {
+        case 3:
+            guard let ri = Int(s.prefix(1), radix: 16), let gi = Int(s.dropFirst().prefix(1), radix: 16),
+                  let bi = Int(s.suffix(1), radix: 16) else { return nil }
+            r = CGFloat(ri * 17) / 255; g = CGFloat(gi * 17) / 255; b = CGFloat(bi * 17) / 255
+        case 6:
+            guard let ri = Int(s.prefix(2), radix: 16), let gi = Int(s.dropFirst(2).prefix(2), radix: 16),
+                  let bi = Int(s.suffix(2), radix: 16) else { return nil }
+            r = CGFloat(ri) / 255; g = CGFloat(gi) / 255; b = CGFloat(bi) / 255
+        default:
+            return nil
+        }
+        return NSColor(red: r, green: g, blue: b, alpha: 1.0)
     }
 }
