@@ -95,15 +95,13 @@ struct ClipboardItem: Identifiable, Hashable {
 
     /// Returns a short textual summary for the list display
     var displayText: String {
-        if color != nil {
-            return colorHex
-        }
         if let text = plainText {
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\n", with: " ")
         }
         if image != nil { return "[Image]" }
         if fileURLs != nil { return "[Files]" }
+        if color != nil { return colorHex }
         if rtfData != nil { return "[Rich Text]" }
         return "[Clipboard Data (\(data.count) types)]"
     }

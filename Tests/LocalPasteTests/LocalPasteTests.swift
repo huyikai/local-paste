@@ -124,11 +124,20 @@ final class ClipboardItemTests: XCTestCase {
         XCTAssertNotNil(item.displayColor, "displayColor should not be nil")
         XCTAssertEqual(item.contentTypeIcon, "paintpalette")
 
-        // displayText must show hex, NOT the plain text description
-        XCTAssertEqual(item.displayText, item.colorHex,
-                       "displayText should be hex, not plain text description")
-        XCTAssertTrue(item.displayText.hasPrefix("#"),
-                      "displayText should start with #, got: \(item.displayText)")
+        // When both text and color exist, displayText shows the original text
+        // (the color is indicated by the left-edge colored strip, not by replacing text)
+        XCTAssertEqual(item.displayText,
+                       "sRGB IEC61966-2.1 colorspace 0.2 0.6 0.9 1",
+                       "displayText should show original text when both exist")
+
+        // But when only color data exists (no plain text), displayText shows hex
+        let colorOnlyItem = ClipboardItem(
+            id: UUID(), timestamp: Date(),
+            data: [PasteboardTypes.color: dataMap[PasteboardTypes.color]!],
+            typeOrder: [PasteboardTypes.color],
+            appName: nil, appIconData: nil, pinGroup: nil
+        )
+        XCTAssertEqual(colorOnlyItem.displayText, colorOnlyItem.colorHex)
     }
 
     func testColorItemAppearsInHistory() {

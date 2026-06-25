@@ -15,25 +15,19 @@ struct ItemRowView: View {
         let item = currentItem
 
         HStack(spacing: 10) {
-            // Color swatch or app icon
-            if let swatch = item.displayColor {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(nsColor: swatch))
-                    .frame(width: 18, height: 18)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
-                    )
-            } else if let icon = item.appIcon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 18, height: 18)
-                    .cornerRadius(4)
-            } else {
-                Image(systemName: item.contentTypeIcon)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .frame(width: 18)
+            // App icon
+            Group {
+                if let icon = item.appIcon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                        .cornerRadius(4)
+                } else {
+                    Image(systemName: item.contentTypeIcon)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .frame(width: 18)
+                }
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -90,12 +84,20 @@ struct ItemRowView: View {
         .padding(.vertical, 7)
         .contentShape(Rectangle())
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(appState.selectedItemID == item.id
-                      ? Color.accentColor.opacity(0.12)
-                      : Color.clear)
-                .padding(.horizontal, 2)
-                .padding(.vertical, 1)
+            HStack(spacing: 0) {
+                // Color strip on the left edge
+                if let swatch = item.displayColor {
+                    Rectangle()
+                        .fill(Color(nsColor: swatch))
+                        .frame(width: 4)
+                }
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(appState.selectedItemID == item.id
+                          ? Color.accentColor.opacity(0.12)
+                          : Color.clear)
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 1)
         )
         .onTapGesture { appState.selectedItemID = item.id }
         .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
