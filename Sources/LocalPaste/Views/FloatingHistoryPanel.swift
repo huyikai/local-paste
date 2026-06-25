@@ -279,7 +279,7 @@ final class FloatingHistoryPanel: NSPanel {
             panel.showHTML(data: htmlData)
         } else if let rtfData = item.rtfData {
             panel.showRTF(data: rtfData)
-        } else if let color = item.color {
+        } else if let color = item.displayColor {
             panel.showColor(color: color)
         } else if let text = item.plainText {
             panel.showText(text)
@@ -478,6 +478,7 @@ private final class PreviewPanel: NSPanel {
         let colorView = NSView(frame: scrollView.bounds)
         colorView.wantsLayer = true
         colorView.layer?.backgroundColor = color.cgColor
+        colorView.autoresizingMask = [.width, .height]
         scrollView.documentView = colorView
         makeKeyAndOrderFront(nil)
         installCloseMonitor()
