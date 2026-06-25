@@ -60,7 +60,46 @@ final class ClipboardItemTests: XCTestCase {
         XCTAssertEqual(item1.data, item2.data)
     }
 
-    func testColorContentIcon() {
+    func testColorSwatchNotNull() {
+        // Simulate copying a red color from the system color picker
+        let color = NSColor(red: 1.0, green: 0.2, blue: 0.3, alpha: 1.0)
+        let colorData = try! NSKeyedArchiver.archivedData(withRootObject: color, requiringSecureCoding: true)
+
+        let item = makeItem(data: [PasteboardTypes.color: colorData])
+        XCTAssertNotNil(item.color, "NSColor should decode from pasteboard color data")
+        XCTAssertNotNil(item.displayColor, "displayColor should be available in sRGB")
+        XCTAssertEqual(item.colorHex, "#FF334D", "hex should match r=255,g=51,b=77")
+    }
+
+    func testColorDisplayPipeline() {
+        // Full pipeline: what the pasteboard gives us → what the UI shows
+        let color = NSColor(calibratedRed: 0.0, green: 0.5, blue: 1.0, alpha: 1.0)
+        let colorData = try! NSKeyedArchiver.archivedData(withRootObject: color, requiringSecureCoding: true)
+
+        let dataMap = [
+            PasteboardTypes.color: colorData,
+        ]
+
+        let item = ClipboardItem(
+            id: UUID(), timestamp: Date(),
+            data: dataMap, typeOrder: Array(dataMap.keys),
+            appName: nil, appIconData: nil, pinGroup: nil
+        )
+
+        // Check type detection
+        XCTAssertTrue(item.data.keys.contains(PasteboardTypes.color))
+        XCTAssertEqual(item.contentTypeIcon, "paintpalette")
+
+        // Check color decoding
+        XCTAssertNotNil(item.color)
+        XCTAssertNotNil(item.displayColor)
+
+        // Check hex  
+        XCTAssertTrue(item.colorHex.hasPrefix("#"))
+        XCTAssertEqual(item.colorHex.count, 7) // #RRGGBB
+    }
+
+    func testColorItemAppearsInHistory() {
         let color = NSColor.red
         let colorData = try! NSKeyedArchiver.archivedData(withRootObject: color,
                                                            requiringSecureCoding: false)
