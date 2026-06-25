@@ -3,7 +3,7 @@
 [![CI](https://github.com/huyikai/local-paste/actions/workflows/release.yml/badge.svg)](https://github.com/huyikai/local-paste/actions/workflows/release.yml)
 [![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-orange)](https://github.com/huyikai/local-paste)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[中文](README_zh.md)
+[中文](README_zh.md) / [English](README.md)
 
 A lightweight, local-only clipboard history manager for macOS.
 
