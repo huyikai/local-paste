@@ -84,20 +84,22 @@ struct ItemRowView: View {
         .padding(.vertical, 7)
         .contentShape(Rectangle())
         .background(
-            HStack(spacing: 0) {
-                // Color strip on the left edge
+            Group {
                 if let swatch = item.displayColor {
-                    Rectangle()
-                        .fill(Color(nsColor: swatch))
-                        .frame(width: 4)
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(nsColor: swatch).opacity(0.15))
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 1)
                 }
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(appState.selectedItemID == item.id
-                          ? Color.accentColor.opacity(0.12)
-                          : Color.clear)
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 1)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(appState.selectedItemID == item.id
+                      ? Color.accentColor.opacity(0.12)
+                      : Color.clear)
+                .padding(.horizontal, 2)
+                .padding(.vertical, 1)
         )
         .onTapGesture { appState.selectedItemID = item.id }
         .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
