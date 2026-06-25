@@ -86,17 +86,49 @@ final class ClipboardItemTests: XCTestCase {
             appName: nil, appIconData: nil, pinGroup: nil
         )
 
-        // Check type detection
         XCTAssertTrue(item.data.keys.contains(PasteboardTypes.color))
         XCTAssertEqual(item.contentTypeIcon, "paintpalette")
-
-        // Check color decoding
         XCTAssertNotNil(item.color)
         XCTAssertNotNil(item.displayColor)
-
-        // Check hex  
         XCTAssertTrue(item.colorHex.hasPrefix("#"))
-        XCTAssertEqual(item.colorHex.count, 7) // #RRGGBB
+        XCTAssertEqual(item.colorHex.count, 7)
+    }
+
+    func testRealPasteboardColorRoundtrip() {
+        // Simulate actual color picker copy behavior
+        let pb = NSPasteboard.general
+        pb.clearContents()
+
+        let color = NSColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0)
+        let colorData = try! NSKeyedArchiver.archivedData(withRootObject: color, requiringSecureCoding: true)
+
+        pb.declareTypes([.string, NSPasteboard.PasteboardType(PasteboardTypes.color)], owner: nil)
+        pb.setString("sRGB IEC61966-2.1 colorspace 0.2 0.6 0.9 1", forType: .string)
+        pb.setData(colorData, forType: NSPasteboard.PasteboardType(PasteboardTypes.color))
+
+        // Read via our production code
+        let (dataMap, order) = pb.readAllTypes()
+        XCTAssertTrue(dataMap.keys.contains(PasteboardTypes.color),
+                      "pasteboard should have color type")
+        XCTAssertTrue(dataMap.keys.contains(UTType.utf8PlainText.identifier),
+                      "pasteboard also has plain text (like real color picker)")
+
+        // Create item exactly as PasteboardManager would
+        let item = ClipboardItem(
+            id: UUID(), timestamp: Date(),
+            data: dataMap, typeOrder: order,
+            appName: nil, appIconData: nil, pinGroup: nil
+        )
+
+        // Display color check
+        XCTAssertNotNil(item.displayColor, "displayColor should not be nil")
+        XCTAssertEqual(item.contentTypeIcon, "paintpalette")
+
+        // displayText must show hex, NOT the plain text description
+        XCTAssertEqual(item.displayText, item.colorHex,
+                       "displayText should be hex, not plain text description")
+        XCTAssertTrue(item.displayText.hasPrefix("#"),
+                      "displayText should start with #, got: \(item.displayText)")
     }
 
     func testColorItemAppearsInHistory() {
