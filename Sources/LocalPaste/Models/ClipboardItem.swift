@@ -71,6 +71,21 @@ struct ClipboardItem: Identifiable, Hashable {
         return try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: data)
     }
 
+    /// Display-ready sRGB color for swatch.
+    var displayColor: NSColor? {
+        color?.usingColorSpace(.sRGB)
+    }
+
+    /// Hex string for the color, e.g. "#FF6B35"
+    var colorHex: String {
+        guard let nsColor = color,
+              let rgb = nsColor.usingColorSpace(.sRGB) else { return "[Color]" }
+        let r = Int(round(rgb.redComponent * 255))
+        let g = Int(round(rgb.greenComponent * 255))
+        let b = Int(round(rgb.blueComponent * 255))
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
     /// Returns a short textual summary for the list display
     var displayText: String {
         if let text = plainText {
@@ -84,7 +99,7 @@ struct ClipboardItem: Identifiable, Hashable {
             return "[Files]"
         }
         if color != nil {
-            return "[Color]"
+            return colorHex
         }
         if rtfData != nil {
             return "[Rich Text]"
