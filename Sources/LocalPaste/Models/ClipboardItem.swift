@@ -71,15 +71,22 @@ struct ClipboardItem: Identifiable, Hashable {
         return try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: data)
     }
 
-    /// Display-ready sRGB color for swatch.
+    /// Display-ready NSColor for swatch rendering.
     var displayColor: NSColor? {
-        color?.usingColorSpace(.sRGB)
+        color
     }
 
     /// Hex string for the color, e.g. "#FF6B35"
     var colorHex: String {
-        guard let nsColor = color,
-              let rgb = nsColor.usingColorSpace(.sRGB) else { return "[Color]" }
+        guard let nsColor = color else { return "[Color]" }
+        let rgb: NSColor
+        if let sRGB = nsColor.usingColorSpace(.sRGB) {
+            rgb = sRGB
+        } else if let generic = nsColor.usingColorSpace(.genericRGB) {
+            rgb = generic
+        } else {
+            rgb = nsColor
+        }
         let r = Int(round(rgb.redComponent * 255))
         let g = Int(round(rgb.greenComponent * 255))
         let b = Int(round(rgb.blueComponent * 255))
