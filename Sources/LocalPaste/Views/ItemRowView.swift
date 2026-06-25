@@ -9,6 +9,13 @@ struct ItemRowView: View {
         appState.items.first(where: { $0.id == item.id }) ?? item
     }
 
+    /// White or black based on color brightness, for readable text on color backgrounds.
+    private var textColor: Color {
+        guard let c = currentItem.displayColor else { return .primary }
+        let l = c.redComponent * 0.299 + c.greenComponent * 0.587 + c.blueComponent * 0.114
+        return l > 0.55 ? .black : .white
+    }
+
     @State private var showPinPopover = false
 
     var body: some View {
@@ -87,7 +94,7 @@ struct ItemRowView: View {
             Group {
                 if let swatch = item.displayColor {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Color(nsColor: swatch).opacity(0.15))
+                        .fill(Color(nsColor: swatch))
                         .padding(.horizontal, 2)
                         .padding(.vertical, 1)
                 }
@@ -96,11 +103,12 @@ struct ItemRowView: View {
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(appState.selectedItemID == item.id
-                      ? Color.accentColor.opacity(0.12)
+                      ? Color.accentColor.opacity(0.25)
                       : Color.clear)
                 .padding(.horizontal, 2)
                 .padding(.vertical, 1)
         )
+        .foregroundColor(currentItem.displayColor != nil ? textColor : .primary)
         .onTapGesture { appState.selectedItemID = item.id }
         .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
         .contextMenu {
