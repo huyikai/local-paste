@@ -11,7 +11,7 @@ struct SearchBarView: View {
                 .foregroundColor(.secondary)
                 .font(.caption)
 
-            TextField("Search…", text: $text)
+            TextField(loc("search.placeholder"), text: $text)
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focused($isFocused)

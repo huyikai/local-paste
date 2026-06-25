@@ -8,15 +8,15 @@ struct SettingsView: View {
         TabView {
             generalTab
                 .tabItem {
-                    Label("General", systemImage: "gearshape")
+                    Label(loc("tab.general"), systemImage: "gearshape")
                 }
             groupsTab
                 .tabItem {
-                    Label("Groups", systemImage: "bookmark")
+                    Label(loc("tab.groups"), systemImage: "bookmark")
                 }
             shortcutsTab
                 .tabItem {
-                    Label("Shortcuts", systemImage: "keyboard")
+                    Label(loc("tab.shortcuts"), systemImage: "keyboard")
                 }
         }
         .frame(width: 420, height: 300)
@@ -26,14 +26,14 @@ struct SettingsView: View {
 
     private var generalTab: some View {
         Form {
-            Section("History") {
-                Stepper("Maximum history: \(appState.maxHistoryCount) items",
+            Section {
+                Stepper(loc("settings.max.history", appState.maxHistoryCount),
                         value: $appState.maxHistoryCount,
                         in: 50...2000,
                         step: 50)
 
                 HStack {
-                    Text("Storage location:")
+                    Text(loc("settings.storage.location"))
                         .foregroundColor(.secondary)
                     Text(historyPath)
                         .font(.caption)
@@ -42,32 +42,60 @@ struct SettingsView: View {
                         .truncationMode(.middle)
                 }
 
-                Button("Clear All History") {
+                Button(loc("settings.clear.all")) {
                     appState.clearHistory()
                 }
                 .disabled(appState.items.isEmpty)
+            } header: {
+                Text(loc("section.history"))
             }
 
-            Section("Startup") {
-                Toggle("Launch at login", isOn: Binding(
+            Section {
+                Toggle(isOn: Binding(
                     get: { appState.launchAtLogin },
                     set: { newValue in
                         appState.launchAtLogin = newValue
                         toggleLaunchAtLogin(enabled: newValue)
                     }
-                ))
+                )) {
+                    Text(loc("settings.launch.at.login"))
+                }
+            } header: {
+                Text(loc("section.startup"))
+            }
+
+            Section {
+                Picker(selection: languageBinding, label: Text(loc("settings.language"))) {
+                    ForEach(LocalizationService.Language.allCases) { lang in
+                        Text(lang.displayName).tag(lang)
+                    }
+                }
+                .pickerStyle(.menu)
+            } header: {
+                Text(loc("settings.language"))
             }
         }
         .padding()
+    }
+
+    private var languageBinding: Binding<LocalizationService.Language> {
+        Binding(
+            get: { LocalizationService.shared.selectedLanguage },
+            set: { newValue in
+                if newValue != LocalizationService.shared.selectedLanguage {
+                    LocalizationService.shared.applyLanguage(newValue)
+                }
+            }
+        )
     }
 
     // MARK: - Groups
 
     private var groupsTab: some View {
         Form {
-            Section("Pin Groups") {
+            Section {
                 if appState.pinGroups.isEmpty {
-                    Text("No groups yet. Pin an item to create a group.")
+                    Text(loc("settings.no.groups"))
                         .foregroundColor(.secondary)
                         .font(.caption)
                 } else {
@@ -77,7 +105,7 @@ struct SettingsView: View {
                                 .foregroundColor(.accentColor)
                             Text(group)
                             Spacer()
-                            Text("\(appState.items.filter { $0.pinGroup == group }.count) items")
+                            Text(loc("items.count", appState.items.filter { $0.pinGroup == group }.count))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Button(action: { appState.deletePinGroup(group) }) {
@@ -85,11 +113,13 @@ struct SettingsView: View {
                                     .foregroundColor(.secondary)
                             }
                             .buttonStyle(.plain)
-                            .help("Delete group")
+                            .help(loc("delete.group"))
                         }
                         .padding(.vertical, 2)
                     }
                 }
+            } header: {
+                Text(loc("section.pin.groups"))
             }
         }
         .padding()
@@ -99,38 +129,42 @@ struct SettingsView: View {
 
     private var shortcutsTab: some View {
         Form {
-            Section("Global Hotkey") {
+            Section {
                 HStack {
                     Image(systemName: "keyboard")
-                    Text("Show / Hide clipboard history")
+                    Text(loc("settings.show.hide"))
                     Spacer()
                     KeyboardShortcutView(key: "V", modifiers: ["⌥", "⌘"])
                 }
                 .padding(.vertical, 4)
 
-                Text("Press ⌥⌘V anywhere to open the clipboard history overlay.")
+                Text(loc("settings.hotkey.hint"))
                     .font(.caption)
                     .foregroundColor(.secondary)
+            } header: {
+                Text(loc("section.global.hotkey"))
             }
 
-            Section("In-App Shortcuts") {
+            Section {
                 HStack {
-                    Text("Double-click item")
+                    Text(loc("settings.double.click"))
                     Spacer()
-                    Text("Copy & Paste")
+                    Text(loc("settings.copy.paste"))
                         .foregroundColor(.secondary)
                         .font(.caption)
                 }
                 .padding(.vertical, 2)
 
                 HStack {
-                    Text("Right-click item")
+                    Text(loc("settings.right.click"))
                     Spacer()
-                    Text("Context menu")
+                    Text(loc("settings.context.menu"))
                         .foregroundColor(.secondary)
                         .font(.caption)
                 }
                 .padding(.vertical, 2)
+            } header: {
+                Text(loc("section.inapp.shortcuts"))
             }
         }
         .padding()
@@ -144,15 +178,15 @@ struct SettingsView: View {
                 .font(.system(size: 48))
                 .foregroundColor(.accentColor)
 
-            Text("LocalPaste")
+            Text(loc("app.name"))
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text("Version 1.0.0")
+            Text(loc("settings.version"))
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            Text("A local clipboard history manager.\nAll data stays on your machine.")
+            Text(loc("settings.about.description"))
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)

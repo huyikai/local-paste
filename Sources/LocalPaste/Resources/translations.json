@@ -1,0 +1,67 @@
+{
+  "app.name": {"en": "LocalPaste", "zh-Hans": "LocalPaste", "ja": "LocalPaste"},
+  "app.accessibility": {"en": "LocalPaste", "zh-Hans": "LocalPaste", "ja": "LocalPaste"},
+
+  "tab.general": {"en": "General", "zh-Hans": "通用", "ja": "一般"},
+  "tab.groups": {"en": "Groups", "zh-Hans": "分组", "ja": "グループ"},
+  "tab.shortcuts": {"en": "Shortcuts", "zh-Hans": "快捷键", "ja": "ショートカット"},
+
+  "section.history": {"en": "History", "zh-Hans": "历史记录", "ja": "履歴"},
+  "settings.max.history": {"en": "Maximum history: %lld items", "zh-Hans": "最大历史记录：%lld 条", "ja": "最大履歴数：%lld 件"},
+  "settings.storage.location": {"en": "Storage location:", "zh-Hans": "存储位置：", "ja": "保存場所："},
+  "settings.clear.all": {"en": "Clear All History", "zh-Hans": "清空所有历史记录", "ja": "すべての履歴を消去"},
+  "section.startup": {"en": "Startup", "zh-Hans": "启动", "ja": "起動"},
+  "settings.launch.at.login": {"en": "Launch at login", "zh-Hans": "登录时启动", "ja": "ログイン時に起動"},
+  "settings.language": {"en": "Language", "zh-Hans": "语言", "ja": "言語"},
+  "settings.language.follow.system": {"en": "Follow System", "zh-Hans": "跟随系统", "ja": "システムに従う"},
+
+  "section.pin.groups": {"en": "Pin Groups", "zh-Hans": "固定分组", "ja": "ピングループ"},
+  "settings.no.groups": {"en": "No groups yet. Pin an item to create a group.", "zh-Hans": "暂无分组。固定一个项目即可创建分组。", "ja": "グループがありません。アイテムをピン留めしてグループを作成してください。"},
+  "delete.group": {"en": "Delete group", "zh-Hans": "删除分组", "ja": "グループを削除"},
+
+  "section.global.hotkey": {"en": "Global Hotkey", "zh-Hans": "全局快捷键", "ja": "グローバルショートカット"},
+  "settings.show.hide": {"en": "Show / Hide clipboard history", "zh-Hans": "显示/隐藏剪贴板历史", "ja": "クリップボード履歴を表示/非表示"},
+  "settings.hotkey.hint": {"en": "Press ⌥⌘V anywhere to open the clipboard history overlay.", "zh-Hans": "在任何位置按 ⌥⌘V 打开剪贴板历史覆盖层。", "ja": "任意の場所で ⌥⌘V を押してクリップボード履歴を開きます。"},
+  "section.inapp.shortcuts": {"en": "In-App Shortcuts", "zh-Hans": "应用内快捷键", "ja": "アプリ内ショートカット"},
+  "settings.double.click": {"en": "Double-click item", "zh-Hans": "双击项目", "ja": "アイテムをダブルクリック"},
+  "settings.copy.paste": {"en": "Copy && Paste", "zh-Hans": "复制并粘贴", "ja": "コピー＆ペースト"},
+  "settings.right.click": {"en": "Right-click item", "zh-Hans": "右键点击项目", "ja": "アイテムを右クリック"},
+  "settings.context.menu": {"en": "Context menu", "zh-Hans": "右键菜单", "ja": "コンテキストメニュー"},
+
+  "settings.version": {"en": "Version 1.0.0", "zh-Hans": "版本 1.0.0", "ja": "バージョン 1.0.0"},
+  "settings.about.description": {"en": "A local clipboard history manager.\nAll data stays on your machine.", "zh-Hans": "本地剪贴板历史管理器。\n所有数据保留在您的设备上。", "ja": "ローカルクリップボード履歴管理。\nすべてのデータはお使いのデバイスに保存されます。"},
+
+  "panel.title": {"en": "LocalPaste", "zh-Hans": "LocalPaste", "ja": "LocalPaste"},
+  "settings.button.help": {"en": "Settings", "zh-Hans": "设置", "ja": "設定"},
+  "clear.button": {"en": "Clear", "zh-Hans": "清空", "ja": "消去"},
+  "filter.all": {"en": "All", "zh-Hans": "全部", "ja": "すべて"},
+  "items.count": {"en": "%lld items", "zh-Hans": "%lld 个项目", "ja": "%lld 件"},
+  "delete.count": {"en": "Delete %lld", "zh-Hans": "删除 %lld 个", "ja": "%lld 件を削除"},
+  "keyboard.hint": {"en": "↑↓ move  ⏎ paste  esc close", "zh-Hans": "↑↓ 移动  ⏎ 粘贴  esc 关闭", "ja": "↑↓ 移動  ⏎ ペースト  esc 閉じる"},
+
+  "accessibility.title": {"en": "Auto-Paste Requires Accessibility Permission", "zh-Hans": "自动粘贴需要辅助功能权限", "ja": "自動ペーストにはアクセシビリティ権限が必要です"},
+  "accessibility.message": {"en": "To auto-paste when you press Enter, grant Accessibility permission to LocalPaste in System Settings.\n\nFor now, the content is on your clipboard — press ⌘V to paste.", "zh-Hans": "要自动粘贴，请在「系统设置」中为 LocalPaste 授予辅助功能权限。\n\n目前内容已在剪贴板中 — 请按 ⌘V 粘贴。", "ja": "Enterキーで自動ペーストするには、システム設定でLocalPasteにアクセシビリティ権限を付与してください。\n\n現在、内容はクリップボードにあります — ⌘V でペーストしてください。"},
+  "accessibility.open.settings": {"en": "Open System Settings", "zh-Hans": "打开系统设置", "ja": "システム設定を開く"},
+  "accessibility.ok": {"en": "OK", "zh-Hans": "确定", "ja": "OK"},
+
+  "preview.title": {"en": "Preview", "zh-Hans": "预览", "ja": "プレビュー"},
+
+  "context.paste": {"en": "Paste", "zh-Hans": "粘贴", "ja": "ペースト"},
+  "context.paste.plain": {"en": "Paste as Plain Text", "zh-Hans": "纯文本粘贴", "ja": "プレーンテキストとしてペースト"},
+  "context.pin.group": {"en": "Pin to Group…", "zh-Hans": "固定到分组…", "ja": "グループにピン留め…"},
+  "context.change.group": {"en": "Change Group…", "zh-Hans": "更改分组…", "ja": "グループを変更…"},
+  "context.unpin": {"en": "Unpin", "zh-Hans": "取消固定", "ja": "ピン解除"},
+  "context.delete": {"en": "Delete", "zh-Hans": "删除", "ja": "削除"},
+
+  "pin.popover.title": {"en": "Pin to Group", "zh-Hans": "固定到分组", "ja": "グループにピン留め"},
+  "pin.new.group": {"en": "New group…", "zh-Hans": "新建分组…", "ja": "新しいグループ…"},
+  "pin.add": {"en": "Add", "zh-Hans": "添加", "ja": "追加"},
+
+  "search.placeholder": {"en": "Search…", "zh-Hans": "搜索…", "ja": "検索…"},
+
+  "item.image": {"en": "[Image]", "zh-Hans": "[图片]", "ja": "[画像]"},
+  "item.files": {"en": "[Files]", "zh-Hans": "[文件]", "ja": "[ファイル]"},
+  "item.color": {"en": "[Color]", "zh-Hans": "[颜色]", "ja": "[色]"},
+  "item.rich.text": {"en": "[Rich Text]", "zh-Hans": "[富文本]", "ja": "[リッチテキスト]"},
+  "item.clipboard.data": {"en": "[Clipboard Data (%lld types)]", "zh-Hans": "[剪贴板数据（%lld 种类型）]", "ja": "[クリップボードデータ（%lld 種類）]"}
+}

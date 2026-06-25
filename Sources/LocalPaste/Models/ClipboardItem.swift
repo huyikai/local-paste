@@ -75,7 +75,10 @@ struct ClipboardItem: Identifiable, Hashable {
     /// Detects color from NSColor data OR from hex text like "#FF6B35".
     var displayColor: NSColor? {
         if let c = color { return c }
-        if let text = plainText?.trimmingCharacters(in: .whitespacesAndNewlines) {
+        // Only parse hex colors when the string starts with # (e.g. "#fff", "#FF6B35").
+        // Plain numbers like "123" should NOT be treated as colors.
+        if let text = plainText?.trimmingCharacters(in: .whitespacesAndNewlines),
+           text.hasPrefix("#") {
             return NSColor.fromHex(text)
         }
         return nil
@@ -89,7 +92,7 @@ struct ClipboardItem: Identifiable, Hashable {
             let b = Int(round(c.blueComponent * 255))
             return String(format: "#%02X%02X%02X", r, g, b)
         }
-        return "[Color]"
+        return loc("item.color")
     }
 
     /// Returns a short textual summary for the list display
@@ -98,11 +101,11 @@ struct ClipboardItem: Identifiable, Hashable {
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\n", with: " ")
         }
-        if image != nil { return "[Image]" }
-        if fileURLs != nil { return "[Files]" }
+        if image != nil { return loc("item.image") }
+        if fileURLs != nil { return loc("item.files") }
         if color != nil { return colorHex }
-        if rtfData != nil { return "[Rich Text]" }
-        return "[Clipboard Data (\(data.count) types)]"
+        if rtfData != nil { return loc("item.rich.text") }
+        return loc("item.clipboard.data", data.count)
     }
 
     /// Rendered rich-text preview (HTML or RTF), if available.

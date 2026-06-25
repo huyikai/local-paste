@@ -113,27 +113,27 @@ struct ItemRowView: View {
         .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
         .contextMenu {
             Button(action: { appState.copyItemToPasteboard(item) }) {
-                Label("Paste", systemImage: "doc.on.clipboard")
+                Label(loc("context.paste"), systemImage: "doc.on.clipboard")
             }
             if item.plainText != nil {
                 Button(action: {
                     appState.selectedItemID = item.id
                     appState.pasteSelectedAsPlainText()
                 }) {
-                    Label("Paste as Plain Text", systemImage: "text.alignleft")
+                    Label(loc("context.paste.plain"), systemImage: "text.alignleft")
                 }
             }
             Button(action: { showPinPopover = true }) {
-                Label(item.pinGroup != nil ? "Change Group..." : "Pin to Group...", systemImage: "bookmark")
+                Label(item.pinGroup != nil ? loc("context.change.group") : loc("context.pin.group"), systemImage: "bookmark")
             }
             if item.pinGroup != nil {
                 Button(action: { appState.setPinGroup(for: item, group: nil) }) {
-                    Label("Unpin", systemImage: "bookmark.slash")
+                    Label(loc("context.unpin"), systemImage: "bookmark.slash")
                 }
             }
             Divider()
             Button(role: .destructive, action: { appState.deleteItem(item) }) {
-                Label("Delete", systemImage: "trash")
+                Label(loc("context.delete"), systemImage: "trash")
             }
         }
     }
@@ -148,7 +148,7 @@ struct PinGroupPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Pin to Group")
+            Text("pin.popover.title")
                 .font(.headline)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -180,7 +180,7 @@ struct PinGroupPicker: View {
                             .foregroundColor(.secondary.opacity(0.5))
                     }
                     .buttonStyle(.plain)
-                    .help("Delete group")
+                    .help(loc("delete.group"))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -189,10 +189,10 @@ struct PinGroupPicker: View {
             Divider()
 
             HStack {
-                TextField("New group...", text: $newGroupName)
+                TextField(loc("pin.new.group"), text: $newGroupName)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12))
-                Button("Add") {
+                Button(loc("pin.add")) {
                     let name = newGroupName.trimmingCharacters(in: .whitespaces)
                     guard !name.isEmpty, !appState.pinGroups.contains(name) else { return }
                     appState.pinGroups.append(name)

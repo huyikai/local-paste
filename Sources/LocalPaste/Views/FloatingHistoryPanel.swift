@@ -37,7 +37,7 @@ final class FloatingHistoryPanel: NSPanel {
         self.titlebarAppearsTransparent = true
         self.isMovableByWindowBackground = true
         self.hidesOnDeactivate = false
-        self.title = "LocalPaste"
+        self.title = loc("panel.title")
 
         // Ensure it stays above other windows
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -231,16 +231,11 @@ final class FloatingHistoryPanel: NSPanel {
         LocalPasteState.lastAccessibilityPrompt = now
 
         let alert = NSAlert()
-        alert.messageText = "Auto-Paste Requires Accessibility Permission"
-        alert.informativeText = """
-        To auto-paste when you press Enter, grant Accessibility permission
-        to LocalPaste in System Settings, then restart the app.
-
-        For now, the content is on your clipboard — press ⌘V to paste.
-        """
+        alert.messageText = loc("accessibility.title")
+        alert.informativeText = loc("accessibility.message")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: loc("accessibility.open.settings"))
+        alert.addButton(withTitle: loc("accessibility.ok"))
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -396,7 +391,7 @@ private final class PreviewPanel: NSPanel {
                    backing: .buffered, defer: false)
         isFloatingPanel = true
         level = .floating
-        title = "Preview"
+        title = loc("preview.title")
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
         backgroundColor = .windowBackgroundColor
@@ -551,7 +546,7 @@ struct HistoryPanelContentView: View {
             // Group filter
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    FilterChip(label: "All", selected: appState.selectedPinGroup == nil) {
+                    FilterChip(label: loc("filter.all"), selected: appState.selectedPinGroup == nil) {
                         appState.selectedPinGroup = nil
                     }
                     ForEach(appState.pinGroups, id: \.self) { group in
@@ -595,23 +590,26 @@ struct HistoryPanelContentView: View {
 
             // Footer
             HStack {
-                Text("\(appState.displayItems.count) items")
+                Text(loc("items.count", appState.displayItems.count))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
                 if appState.selectedItemIDs.count > 1 {
                     Button(action: { appState.deleteSelectedItems() }) {
-                        Label("Delete \(appState.selectedItemIDs.count)", systemImage: "trash")
+                        Label(loc("delete.count", appState.selectedItemIDs.count), systemImage: "trash")
                     }
                     .buttonStyle(.plain)
                     .font(.caption)
                 } else {
-                    Text("↑↓ move  ⏎ paste  esc close")
+                    Text("keyboard.hint")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 Button(action: {
+                    // Bring app to front so the Settings window appears above
+                    // other applications' windows
+                    NSApp.activate(ignoringOtherApps: true)
                     // Trigger Cmd+, which opens the Settings scene
                     let src = CGEventSource(stateID: .combinedSessionState)
                     let down = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: true) // comma key
@@ -624,8 +622,8 @@ struct HistoryPanelContentView: View {
                     Image(systemName: "gearshape")
                 }
                 .buttonStyle(.plain)
-                .help("Settings")
-                Button("Clear") { appState.clearHistory() }
+                .help(loc("settings.button.help"))
+                Button(loc("clear.button")) { appState.clearHistory() }
                     .buttonStyle(.plain)
                     .font(.caption)
                     .disabled(appState.items.isEmpty)
