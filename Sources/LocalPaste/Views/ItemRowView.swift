@@ -100,14 +100,6 @@ struct ItemRowView: View {
                 }
             }
         )
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(appState.selectedItemID == item.id
-                      ? Color.accentColor.opacity(0.25)
-                      : Color.clear)
-                .padding(.horizontal, 2)
-                .padding(.vertical, 1)
-        )
         .foregroundColor(currentItem.displayColor != nil ? textColor : .primary)
         .onTapGesture { appState.selectedItemID = item.id }
         .onTapGesture(count: 2) { appState.performPaste(item) }

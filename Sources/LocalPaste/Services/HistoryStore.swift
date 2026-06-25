@@ -41,7 +41,7 @@ final class HistoryStore {
     // MARK: - Properties
 
     private let fileURL: URL
-    private let maxItems: Int
+    let maxItems: Int
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
@@ -59,9 +59,13 @@ final class HistoryStore {
             let appDir = appSupport.appendingPathComponent("LocalPaste", isDirectory: true)
 
             // Create directory if needed
-            try? FileManager.default.createDirectory(at: appDir,
-                                                      withIntermediateDirectories: true,
-                                                      attributes: nil)
+            do {
+                try FileManager.default.createDirectory(at: appDir,
+                                                         withIntermediateDirectories: true,
+                                                         attributes: nil)
+            } catch {
+                print("HistoryStore: failed to create app support directory: \(error)")
+            }
 
             self.fileURL = appDir.appendingPathComponent("history.json")
         }
@@ -86,7 +90,7 @@ final class HistoryStore {
 
             return items
         } catch {
-            print("Failed to load history: \(error)")
+            print("HistoryStore: failed to load history from \(fileURL.path): \(error)")
             return []
         }
     }
@@ -101,7 +105,27 @@ final class HistoryStore {
             let data = try encoder.encode(storableItems)
             try data.write(to: fileURL, options: [.atomic])
         } catch {
-            print("Failed to save history: \(error)")
+            print("HistoryStore: failed to save \(limited.count) items to \(fileURL.path): \(error)")
+        }
+    }
+
+    // MARK: - Export / Import
+
+    /// Serialize items to JSON data for export.
+    func exportJSON(_ items: [ClipboardItem]) -> Data? {
+        let storableItems = items.map { StorableItem(from: $0) }
+        return try? encoder.encode(storableItems)
+    }
+
+    /// Deserialize JSON data into clipboard items (e.g. from an imported file).
+    /// Returns nil if the data is invalid.
+    func importJSON(from data: Data) -> [ClipboardItem]? {
+        do {
+            let storableItems = try decoder.decode([StorableItem].self, from: data)
+            return storableItems.map { $0.toClipboardItem() }
+        } catch {
+            print("HistoryStore: failed to import JSON: \(error)")
+            return nil
         }
     }
 }

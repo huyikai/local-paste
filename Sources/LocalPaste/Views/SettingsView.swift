@@ -46,6 +46,17 @@ struct SettingsView: View {
                     appState.clearHistory()
                 }
                 .disabled(appState.items.isEmpty)
+
+                HStack(spacing: 8) {
+                    Button(loc("settings.export")) {
+                        exportHistory()
+                    }
+                    .disabled(appState.items.isEmpty)
+
+                    Button(loc("settings.import")) {
+                        importHistory()
+                    }
+                }
             } header: {
                 Text(loc("section.history"))
             }
@@ -134,7 +145,14 @@ struct SettingsView: View {
                     Image(systemName: "keyboard")
                     Text(loc("settings.show.hide"))
                     Spacer()
-                    KeyboardShortcutView(key: "V", modifiers: ["⌥", "⌘"])
+                    // HotKeyManager is lazy-initialized via AppState
+                    HotKeyRecorderView(
+                        currentDescription: appState.hotKeyManager.currentDescription,
+                        onRecord: { keyCode, modifiers in
+                            appState.hotKeyManager.save(keyCode: keyCode, modifiers: modifiers)
+                            appState.hotKeyManager.reload()
+                        }
+                    )
                 }
                 .padding(.vertical, 4)
 
@@ -213,8 +231,65 @@ struct SettingsView: View {
                     try SMAppService.mainApp.unregister()
                 }
             } catch {
-                print("Failed to toggle launch at login: \(error)")
+                print("SettingsView: failed to \(enabled ? "enable" : "disable") launch at login: \(error)")
             }
+        }
+    }
+
+    // MARK: - Export / Import
+
+    /// Export all history to a JSON file via NSSavePanel.
+    private func exportHistory() {
+        let panel = NSSavePanel()
+        panel.title = loc("export.title")
+        panel.nameFieldStringValue = "LocalPaste-history.json"
+        panel.allowedContentTypes = [.json]
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let store = HistoryStore(maxItems: appState.maxHistoryCount)
+        guard let data = store.exportJSON(appState.items) else { return }
+
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            print("SettingsView: export failed: \(error)")
+        }
+    }
+
+    /// Import history from a JSON file via NSOpenPanel.
+    private func importHistory() {
+        let panel = NSOpenPanel()
+        panel.title = loc("import.title")
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let store = HistoryStore(maxItems: appState.maxHistoryCount)
+        guard let data = try? Data(contentsOf: url),
+              let imported = store.importJSON(from: data),
+              !imported.isEmpty else {
+            // Show alert for invalid file
+            let alert = NSAlert()
+            alert.messageText = loc("import.invalid.title")
+            alert.informativeText = loc("import.invalid.message")
+            alert.runModal()
+            return
+        }
+
+        // Confirm before merging
+        let alert = NSAlert()
+        alert.messageText = loc("import.confirm.title")
+        alert.informativeText = loc("import.confirm.message", imported.count)
+        alert.addButton(withTitle: loc("import.confirm.import"))
+        alert.addButton(withTitle: loc("import.confirm.cancel"))
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        // Merge: insert imported items (dedup by data content)
+        for item in imported {
+            appState.insertItem(item)
         }
     }
 }

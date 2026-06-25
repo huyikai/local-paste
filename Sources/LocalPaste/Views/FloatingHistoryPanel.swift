@@ -601,7 +601,7 @@ struct HistoryPanelContentView: View {
                     .buttonStyle(.plain)
                     .font(.caption)
                 } else {
-                    Text("keyboard.hint")
+                    Text(loc("keyboard.hint"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }

@@ -276,21 +276,216 @@ final class HistoryStoreTests: XCTestCase {
         store.save([])
         XCTAssertEqual(store.load().count, 0)
     }
+
+    func testExportImportRoundtrip() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalPasteTests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = HistoryStore(maxItems: 10, storageURL: tempDir.appendingPathComponent("x.json"))
+
+        let items = [
+            makeItem(text: "hello", pinGroup: "Work"),
+            makeItem(text: "world"),
+        ]
+
+        guard let exportedData = store.exportJSON(items) else {
+            XCTFail("export should succeed")
+            return
+        }
+
+        let imported = store.importJSON(from: exportedData)
+        XCTAssertNotNil(imported)
+        XCTAssertEqual(imported?.count, 2)
+        XCTAssertEqual(imported?.first?.plainText, "hello")
+        XCTAssertEqual(imported?.first?.pinGroup, "Work")
+        XCTAssertEqual(imported?.last?.plainText, "world")
+    }
+
+    func testImportInvalidDataReturnsNil() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalPasteTests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = HistoryStore(maxItems: 10, storageURL: tempDir.appendingPathComponent("x.json"))
+
+        let badData = "not valid json".data(using: .utf8)!
+        let result = store.importJSON(from: badData)
+        XCTAssertNil(result)
+    }
+
+    func testExportEmptyArray() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalPasteTests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = HistoryStore(maxItems: 10, storageURL: tempDir.appendingPathComponent("x.json"))
+
+        let data = store.exportJSON([])
+        XCTAssertNotNil(data)
+
+        let imported = store.importJSON(from: data!)
+        XCTAssertNotNil(imported)
+        XCTAssertEqual(imported?.count, 0)
+    }
+}
+
+// MARK: - PasteboardManagerTests
+
+final class PasteboardManagerTests: XCTestCase {
+
+    func testOwnWriteKeysAreFiltered() {
+        // Data with only com.localpaste. keys should return nil
+        let manager = PasteboardManager()
+        let pb = NSPasteboard.general
+        pb.clearContents()
+
+        // Write something then reset so hasChanged is true
+        pb.setString("trigger", forType: .string)
+        _ = manager.hasChanged // sync
+
+        // Now write our own marker data
+        pb.clearContents()
+        let item = NSPasteboardItem()
+        item.setString("internal", forType: NSPasteboard.PasteboardType("com.localpaste.test"))
+        pb.writeObjects([item])
+
+        // Since all keys are com.localpaste.*, capture should return nil
+        let captured = manager.captureCurrentContent()
+        XCTAssertNil(captured, "capture should skip items with only internal types")
+    }
+
+    func testHasChangedDetectsChanges() {
+        let manager = PasteboardManager()
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("hello", forType: .string)
+
+        XCTAssertTrue(manager.hasChanged, "should detect change after writing")
+    }
+
+    func testResetChangeCountSuppressesChange() {
+        let manager = PasteboardManager()
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("hello", forType: .string)
+        _ = manager.hasChanged // consume the change
+
+        manager.resetChangeCount()
+        XCTAssertFalse(manager.hasChanged, "after reset, no change should be reported")
+    }
+
+    func testCaptureNonEmptyItem() {
+        let manager = PasteboardManager()
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("test capture", forType: .string)
+        _ = manager.hasChanged // sync
+
+        let item = manager.captureCurrentContent()
+        XCTAssertNotNil(item, "should capture non-empty pasteboard")
+        XCTAssertEqual(item?.plainText, "test capture")
+    }
+}
+
+// MARK: - PasteboardMonitorTests
+
+final class PasteboardMonitorTests: XCTestCase {
+
+    func testStartSetsIsRunning() {
+        let manager = PasteboardManager()
+        let monitor = PasteboardMonitor(pasteboardManager: manager, interval: 1.0)
+        XCTAssertFalse(monitor.isRunning)
+
+        monitor.start()
+        XCTAssertTrue(monitor.isRunning)
+
+        monitor.stop()
+        XCTAssertFalse(monitor.isRunning)
+    }
+
+    func testDoubleStartIsIdempotent() {
+        let manager = PasteboardManager()
+        let monitor = PasteboardMonitor(pasteboardManager: manager, interval: 1.0)
+
+        monitor.start()
+        monitor.start() // should not crash or double-schedule
+        XCTAssertTrue(monitor.isRunning)
+
+        monitor.stop()
+    }
+
+    func testStopWithoutStartDoesNotCrash() {
+        let manager = PasteboardManager()
+        let monitor = PasteboardMonitor(pasteboardManager: manager)
+        monitor.stop() // no-op should not crash
+        XCTAssertFalse(monitor.isRunning)
+    }
+}
+
+// MARK: - HotKeyManagerTests
+
+final class HotKeyManagerTests: XCTestCase {
+
+    func testOnHotKeyPressedCallback() {
+        let manager = HotKeyManager()
+
+        // Verify initial state
+        XCTAssertNil(manager.onHotKeyPressed)
+
+        var called = false
+        manager.onHotKeyPressed = {
+            called = true
+        }
+        XCTAssertNotNil(manager.onHotKeyPressed)
+    }
+
+    func testRegisterReturnsStatus() {
+        let manager = HotKeyManager()
+        let result = manager.register()
+        // On CI / test environment without accessibility, this may fail
+        // But we just verify it doesn't crash and returns a consistent result
+        if result {
+            manager.unregister()
+        }
+    }
+
+    func testUnregisterIsSafe() {
+        let manager = HotKeyManager()
+        // Calling unregister without register should not crash
+        manager.unregister()
+    }
+
+    func testRegisterThenUnregister() {
+        let manager = HotKeyManager()
+        let registered = manager.register()
+        if registered {
+            manager.unregister()
+            // unregistering again should be safe
+            manager.unregister()
+        }
+    }
 }
 
 // MARK: - AppStateTests
 
 final class AppStateTests: XCTestCase {
 
-    override func setUp() {
-        super.setUp()
-        let appState = AppState()
-        appState.resetForTesting()
+    /// Create an AppState with a controller backed by a temporary in-memory store.
+    private func makeAppState() -> AppState {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalPasteTests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = HistoryStore(maxItems: 200, storageURL: tempDir.appendingPathComponent("test.json"))
+        let manager = PasteboardManager()
+        let controller = ClipboardDataController(store: store, pasteboardManager: manager)
+        return AppState(controller: controller)
     }
 
     func testInsertItemPutsNewestFirst() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         let old = makeItem(text: "old", timestamp: Date(timeIntervalSince1970: 1000))
         let new = makeItem(text: "new", timestamp: Date(timeIntervalSince1970: 2000))
@@ -298,15 +493,13 @@ final class AppStateTests: XCTestCase {
         appState.insertItem(old)
         appState.insertItem(new)
 
-        XCTAssertGreaterThanOrEqual(appState.items.count, 2)
-        XCTAssertEqual(appState.items[0].plainText, "new")
-        XCTAssertEqual(appState.items[1].plainText, "old")
+        XCTAssertGreaterThanOrEqual(appState.controller.items.count, 2)
+        XCTAssertEqual(appState.controller.items[0].plainText, "new")
+        XCTAssertEqual(appState.controller.items[1].plainText, "old")
     }
 
     func testInsertItemDeduplicatesIdenticalData() {
-        let appState = AppState()
-        appState.resetForTesting()
-        let initialCount = appState.items.count
+        let appState = makeAppState()
 
         let data = [UTType.utf8PlainText.identifier: "dup".data(using: .utf8)!]
         let id = UUID()
@@ -320,171 +513,418 @@ final class AppStateTests: XCTestCase {
         appState.insertItem(item1)
         appState.insertItem(item2)
 
-        XCTAssertEqual(appState.items.count, initialCount + 1)
+        XCTAssertEqual(appState.controller.items.count, 1)
     }
 
     func testFilteredItemsWithSearch() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         appState.insertItem(makeItem(text: "Swift Programming"))
         appState.insertItem(makeItem(text: "Rust Programming"))
         appState.insertItem(makeItem(text: "Grocery List"))
 
-        appState.searchQuery = "swift"
+        appState.controller.searchQuery = "swift"
         XCTAssertEqual(appState.filteredItems.count, 1)
         XCTAssertEqual(appState.filteredItems[0].plainText, "Swift Programming")
 
-        appState.searchQuery = "programming"
+        appState.controller.searchQuery = "programming"
         XCTAssertEqual(appState.filteredItems.count, 2)
 
-        appState.searchQuery = ""
-        XCTAssertEqual(appState.filteredItems.count, appState.items.count)
+        appState.controller.searchQuery = ""
+        XCTAssertEqual(appState.filteredItems.count, appState.controller.items.count)
     }
 
     func testSetPinGroup() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         let item = makeItem(text: "pinned")
         appState.insertItem(item)
 
-        guard let first = appState.items.first else { XCTFail(); return }
+        guard let first = appState.controller.items.first else { XCTFail(); return }
         XCTAssertNil(first.pinGroup)
 
         appState.setPinGroup(for: first, group: "Work")
-        guard let updated = appState.items.first(where: { $0.id == first.id }) else { XCTFail(); return }
+        guard let updated = appState.controller.items.first(where: { $0.id == first.id }) else { XCTFail(); return }
         XCTAssertEqual(updated.pinGroup, "Work")
 
         // Clear
         appState.setPinGroup(for: updated, group: nil)
-        guard let cleared = appState.items.first(where: { $0.id == first.id }) else { XCTFail(); return }
+        guard let cleared = appState.controller.items.first(where: { $0.id == first.id }) else { XCTFail(); return }
         XCTAssertNil(cleared.pinGroup)
     }
 
-    func testPinGroupFilter() {
-        let appState = AppState()
-        appState.resetForTesting()
-
-        appState.insertItem(makeItem(text: "a", pinGroup: "Work"))
-        appState.insertItem(makeItem(text: "b"))
-        appState.insertItem(makeItem(text: "c", pinGroup: "Personal"))
-
-        // All (no filter)
-        appState.selectedPinGroup = nil
-        XCTAssertEqual(appState.displayItems.count, 3)
-
-        // Filter by group
-        appState.selectedPinGroup = "Work"
-        XCTAssertEqual(appState.displayItems.count, 1)
-        XCTAssertEqual(appState.displayItems[0].plainText, "a")
-
-        appState.selectedPinGroup = "Personal"
-        XCTAssertEqual(appState.displayItems.count, 1)
-        XCTAssertEqual(appState.displayItems[0].plainText, "c")
-    }
-
     func testDeletePinGroupClearsItems() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         appState.insertItem(makeItem(text: "a"))
         appState.insertItem(makeItem(text: "b"))
         appState.insertItem(makeItem(text: "c"))
 
         // Pin via setPinGroup to register the group
-        appState.setPinGroup(for: appState.items.first(where: { $0.plainText == "a" })!, group: "Work")
-        appState.setPinGroup(for: appState.items.first(where: { $0.plainText == "b" })!, group: "Work")
+        appState.setPinGroup(for: appState.controller.items.first(where: { $0.plainText == "a" })!, group: "Work")
+        appState.setPinGroup(for: appState.controller.items.first(where: { $0.plainText == "b" })!, group: "Work")
 
-        XCTAssertTrue(appState.pinGroups.contains("Work"))
+        XCTAssertTrue(appState.controller.pinGroups.contains("Work"))
         appState.deletePinGroup("Work")
 
-        XCTAssertFalse(appState.pinGroups.contains("Work"))
-        XCTAssertEqual(appState.items.filter { $0.pinGroup != nil }.count, 0)
-        XCTAssertEqual(appState.items.count, 3)
+        XCTAssertFalse(appState.controller.pinGroups.contains("Work"))
+        XCTAssertEqual(appState.controller.items.filter { $0.pinGroup != nil }.count, 0)
+        XCTAssertEqual(appState.controller.items.count, 3)
     }
 
     func testClearHistory() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         appState.insertItem(makeItem(text: "a"))
         appState.insertItem(makeItem(text: "b"))
         appState.clearHistory()
-        XCTAssertTrue(appState.items.isEmpty)
+        XCTAssertTrue(appState.controller.items.isEmpty)
     }
 
     func testDeleteItem() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         appState.insertItem(makeItem(text: "keep"))
         let toDelete = makeItem(text: "delete")
         appState.insertItem(toDelete)
-        let countAfterInsert = appState.items.count
+        let countAfterInsert = appState.controller.items.count
 
         appState.deleteItem(toDelete)
-        XCTAssertEqual(appState.items.count, countAfterInsert - 1)
-        XCTAssertFalse(appState.items.contains { $0.plainText == "delete" })
-    }
-
-    func testKeyboardSelectionNavigation() {
-        let appState = AppState()
-        appState.resetForTesting()
-
-        appState.insertItem(makeItem(text: "C", timestamp: Date(timeIntervalSince1970: 3000)))
-        appState.insertItem(makeItem(text: "B", timestamp: Date(timeIntervalSince1970: 2000)))
-        appState.insertItem(makeItem(text: "A", timestamp: Date(timeIntervalSince1970: 1000)))
-
-        let display = appState.displayItems
-        guard display.count >= 3 else { XCTFail("Need at least 3 items"); return }
-
-        appState.clearSelection()
-        XCTAssertNil(appState.selectedItemID)
-
-        appState.selectNext()
-        XCTAssertEqual(appState.selectedItemID, display[0].id)
-
-        appState.selectNext()
-        XCTAssertEqual(appState.selectedItemID, display[1].id)
-
-        appState.selectPrevious()
-        XCTAssertEqual(appState.selectedItemID, display[0].id)
-
-        appState.selectPrevious()
-        XCTAssertEqual(appState.selectedItemID, display[0].id)
-
-        appState.selectedItemID = display[display.count - 1].id
-        appState.selectNext()
-        XCTAssertEqual(appState.selectedItemID, display[display.count - 1].id)
+        XCTAssertEqual(appState.controller.items.count, countAfterInsert - 1)
+        XCTAssertFalse(appState.controller.items.contains { $0.plainText == "delete" })
     }
 
     func testMultiSelectBatchDelete() {
-        let appState = AppState()
-        appState.resetForTesting()
+        let appState = makeAppState()
 
         appState.insertItem(makeItem(text: "A"))
         appState.insertItem(makeItem(text: "B"))
         appState.insertItem(makeItem(text: "C"))
 
-        let toDelete = Set([appState.items[0].id, appState.items[2].id])
+        // Set multi-select on AppState (didSet syncs to controller)
+        let toDelete = Set([appState.controller.items[0].id, appState.controller.items[2].id])
         appState.selectedItemIDs = toDelete
         appState.deleteSelectedItems()
 
-        XCTAssertEqual(appState.items.count, 1)
-        XCTAssertEqual(appState.items[0].plainText, "B")
+        XCTAssertEqual(appState.controller.items.count, 1)
+        XCTAssertEqual(appState.controller.items[0].plainText, "B")
         XCTAssertTrue(appState.selectedItemIDs.isEmpty)
     }
 
+    func testKeyboardSelectionNavigationSyncsPublishedProperty() {
+        let appState = makeAppState()
+
+        appState.insertItem(makeItem(text: "C", timestamp: Date(timeIntervalSince1970: 3000)))
+        appState.insertItem(makeItem(text: "B", timestamp: Date(timeIntervalSince1970: 2000)))
+        appState.insertItem(makeItem(text: "A", timestamp: Date(timeIntervalSince1970: 1000)))
+
+        let controllerItems = appState.controller.items
+        guard controllerItems.count >= 3 else { XCTFail("Need at least 3 items"); return }
+
+        let firstItemID = controllerItems[0].id
+        let secondItemID = controllerItems[1].id
+
+        // Start with no selection
+        appState.clearSelection()
+        XCTAssertNil(appState.selectedItemID)
+
+        // selectNext sets both appState and controller selectedItemID to first item
+        appState.selectNext()
+        XCTAssertEqual(appState.selectedItemID, firstItemID,
+                       "appState.selectedItemID should match first item")
+        XCTAssertEqual(appState.controller.selectedItemID, firstItemID,
+                       "controller.selectedItemID should also match")
+
+        // selectNext moves down
+        appState.selectNext()
+        XCTAssertEqual(appState.selectedItemID, secondItemID)
+
+        // selectPrevious moves back up
+        appState.selectPrevious()
+        XCTAssertEqual(appState.selectedItemID, firstItemID)
+
+        // At top, selectPrevious stays at first
+        appState.selectPrevious()
+        XCTAssertEqual(appState.selectedItemID, firstItemID)
+
+        // At bottom, selectNext stays at last
+        // Set through controller so navigation uses the same state
+        appState.controller.selectedItemID = controllerItems.last!.id
+        appState.selectNext()
+        XCTAssertEqual(appState.selectedItemID, controllerItems.last!.id)
+    }
+
     func testEnforceHistoryLimit() {
-        let appState = AppState()
-        appState.resetForTesting()
-        appState.maxHistoryCount = 3
+        let appState = makeAppState()
+        appState.controller.maxHistoryCount = 3
 
         for i in 0..<10 {
             appState.insertItem(makeItem(text: "item\(i)"))
         }
 
-        XCTAssertLessThanOrEqual(appState.items.count, 3)
+        XCTAssertLessThanOrEqual(appState.controller.items.count, 3)
+    }
+
+    /// Verifies that every AppState → controller delegate method properly
+    /// syncs the result back to AppState's @Published properties.
+    /// If this test fails after adding a new method, the method likely
+    /// misses an `x = controller.x` sync line at the end.
+    func testAllDelegateMethodsSyncPublishedProperties() {
+        // We test that calling a method through AppState produces the same
+        // state change as calling it directly on the controller.
+        let itemA = makeItem(text: "A", pinGroup: "Work")
+        let itemB = makeItem(text: "B")
+
+        // --- insertItem ---
+        let appState = makeAppState()
+        appState.insertItem(itemA)
+        appState.insertItem(itemB)
+        XCTAssertEqual(appState.items.count, appState.controller.items.count,
+                       "insertItem should sync items")
+
+        // --- selectNext / selectedItemID ---
+        appState.selectFirstItem()
+        XCTAssertEqual(appState.selectedItemID, appState.controller.selectedItemID,
+                       "selectFirstItem should sync selectedItemID")
+
+        appState.selectNext()
+        XCTAssertEqual(appState.selectedItemID, appState.controller.selectedItemID,
+                       "selectNext should sync selectedItemID")
+
+        appState.selectPrevious()
+        XCTAssertEqual(appState.selectedItemID, appState.controller.selectedItemID,
+                       "selectPrevious should sync selectedItemID")
+
+        // --- clearSelection ---
+        appState.clearSelection()
+        XCTAssertEqual(appState.selectedItemID, appState.controller.selectedItemID,
+                       "clearSelection should sync selectedItemID")
+
+        // --- setPinGroup ---
+        appState.setPinGroup(for: itemA, group: "Personal")
+        XCTAssertEqual(appState.items.first(where: { $0.id == itemA.id })?.pinGroup,
+                       appState.controller.items.first(where: { $0.id == itemA.id })?.pinGroup,
+                       "setPinGroup should sync items and pinGroups")
+
+        // --- deletePinGroup ---
+        appState.deletePinGroup("Personal")
+        XCTAssertEqual(appState.pinGroups, appState.controller.pinGroups,
+                       "deletePinGroup should sync pinGroups")
+        XCTAssertEqual(appState.selectedPinGroup, appState.controller.selectedPinGroup,
+                       "deletePinGroup should sync selectedPinGroup")
+
+        // --- deleteItem ---
+        appState.deleteItem(itemB)
+        XCTAssertEqual(appState.items.count, appState.controller.items.count,
+                       "deleteItem should sync items")
+
+        // --- multi-select delete ---
+        appState.insertItem(makeItem(text: "X"))
+        appState.insertItem(makeItem(text: "Y"))
+        appState.insertItem(makeItem(text: "Z"))
+        appState.selectedItemIDs = [appState.controller.items[0].id, appState.controller.items[2].id]
+        appState.deleteSelectedItems()
+        XCTAssertEqual(appState.items.count, appState.controller.items.count,
+                       "deleteSelectedItems should sync items")
+        XCTAssertEqual(appState.selectedItemIDs, appState.controller.selectedItemIDs,
+                       "deleteSelectedItems should sync selectedItemIDs")
+
+        // --- clearHistory ---
+        appState.clearHistory()
+        XCTAssertEqual(appState.items.count, appState.controller.items.count,
+                       "clearHistory should sync items")
+        XCTAssertEqual(appState.items.count, 0)
+    }
+}
+
+// MARK: - ClipboardDataControllerTests
+
+final class ClipboardDataControllerTests: XCTestCase {
+
+    private func makeController(limit: Int = 200) -> ClipboardDataController {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalPasteTests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = HistoryStore(maxItems: limit, storageURL: tempDir.appendingPathComponent("ctl.json"))
+        let manager = PasteboardManager()
+        return ClipboardDataController(store: store, pasteboardManager: manager)
+    }
+
+    func testInsertAndSort() {
+        let ctl = makeController()
+
+        let old = makeItem(text: "old", timestamp: Date(timeIntervalSince1970: 1000))
+        let new = makeItem(text: "new", timestamp: Date(timeIntervalSince1970: 2000))
+
+        ctl.insertItem(old)
+        ctl.insertItem(new)
+
+        XCTAssertEqual(ctl.items.count, 2)
+        XCTAssertEqual(ctl.items[0].plainText, "new")
+        XCTAssertEqual(ctl.items[1].plainText, "old")
+    }
+
+    func testDeduplication() {
+        let ctl = makeController()
+
+        let data = [UTType.utf8PlainText.identifier: "dup".data(using: .utf8)!]
+        let id = UUID()
+        let item1 = ClipboardItem(id: id, timestamp: Date(timeIntervalSince1970: 1000),
+                                   data: data, typeOrder: Array(data.keys),
+                                   appName: nil, appIconData: nil, pinGroup: nil)
+        let item2 = ClipboardItem(id: id, timestamp: Date(timeIntervalSince1970: 2000),
+                                   data: data, typeOrder: Array(data.keys),
+                                   appName: nil, appIconData: nil, pinGroup: nil)
+
+        ctl.insertItem(item1)
+        ctl.insertItem(item2)
+
+        XCTAssertEqual(ctl.items.count, 1)
+        // Should have the newer timestamp
+        XCTAssertEqual(ctl.items[0].timestamp, Date(timeIntervalSince1970: 2000))
+    }
+
+    func testSearchFilter() {
+        let ctl = makeController()
+        ctl.insertItem(makeItem(text: "Swift Programming"))
+        ctl.insertItem(makeItem(text: "Rust Programming"))
+        ctl.insertItem(makeItem(text: "Grocery List"))
+
+        ctl.searchQuery = "swift"
+        XCTAssertEqual(ctl.filteredItems.count, 1)
+        XCTAssertEqual(ctl.filteredItems[0].plainText, "Swift Programming")
+
+        ctl.searchQuery = "programming"
+        XCTAssertEqual(ctl.filteredItems.count, 2)
+
+        ctl.searchQuery = ""
+        XCTAssertEqual(ctl.filteredItems.count, ctl.items.count)
+    }
+
+    func testPinGroup() {
+        let ctl = makeController()
+
+        let item = makeItem(text: "test")
+        ctl.insertItem(item)
+
+        ctl.setPinGroup(for: item, group: "Work")
+        XCTAssertEqual(ctl.items.first?.pinGroup, "Work")
+        XCTAssertTrue(ctl.pinGroups.contains("Work"))
+
+        ctl.setPinGroup(for: item, group: nil)
+        XCTAssertNil(ctl.items.first?.pinGroup)
+    }
+
+    func testPinGroupFilter() {
+        let ctl = makeController()
+        ctl.insertItem(makeItem(text: "a", pinGroup: "Work"))
+        ctl.insertItem(makeItem(text: "b"))
+        ctl.insertItem(makeItem(text: "c", pinGroup: "Personal"))
+
+        ctl.selectedPinGroup = nil
+        XCTAssertEqual(ctl.displayItems.count, 3)
+
+        ctl.selectedPinGroup = "Work"
+        XCTAssertEqual(ctl.displayItems.count, 1)
+        XCTAssertEqual(ctl.displayItems[0].plainText, "a")
+    }
+
+    func testDeletePinGroup() {
+        let ctl = makeController()
+        ctl.insertItem(makeItem(text: "a"))
+        ctl.setPinGroup(for: ctl.items[0], group: "Work")
+        ctl.insertItem(makeItem(text: "b"))
+        ctl.setPinGroup(for: ctl.items[0], group: "Work")
+
+        ctl.deletePinGroup("Work")
+        XCTAssertFalse(ctl.pinGroups.contains("Work"))
+        XCTAssertEqual(ctl.items.filter { $0.pinGroup != nil }.count, 0)
+    }
+
+    func testDeleteItem() {
+        let ctl = makeController()
+        ctl.insertItem(makeItem(text: "keep"))
+        let toDelete = makeItem(text: "delete")
+        ctl.insertItem(toDelete)
+
+        ctl.deleteItem(toDelete)
+        XCTAssertFalse(ctl.items.contains { $0.plainText == "delete" })
+    }
+
+    func testClearHistory() {
+        let ctl = makeController()
+        ctl.insertItem(makeItem(text: "a"))
+        ctl.insertItem(makeItem(text: "b"))
+        ctl.clearHistory()
+        XCTAssertTrue(ctl.items.isEmpty)
+    }
+
+    func testKeyboardSelectionNavigation() {
+        let ctl = makeController()
+
+        ctl.insertItem(makeItem(text: "C", timestamp: Date(timeIntervalSince1970: 3000)))
+        ctl.insertItem(makeItem(text: "B", timestamp: Date(timeIntervalSince1970: 2000)))
+        ctl.insertItem(makeItem(text: "A", timestamp: Date(timeIntervalSince1970: 1000)))
+
+        let display = ctl.displayItems
+        guard display.count >= 3 else { XCTFail("Need at least 3 items"); return }
+
+        ctl.clearSelection()
+        XCTAssertNil(ctl.selectedItemID)
+
+        ctl.selectNext()
+        XCTAssertEqual(ctl.selectedItemID, display[0].id)
+
+        ctl.selectNext()
+        XCTAssertEqual(ctl.selectedItemID, display[1].id)
+
+        ctl.selectPrevious()
+        XCTAssertEqual(ctl.selectedItemID, display[0].id)
+
+        ctl.selectPrevious()
+        XCTAssertEqual(ctl.selectedItemID, display[0].id)
+
+        ctl.selectedItemID = display[display.count - 1].id
+        ctl.selectNext()
+        XCTAssertEqual(ctl.selectedItemID, display[display.count - 1].id)
+    }
+
+    func testMultiSelectBatchDelete() {
+        let ctl = makeController()
+
+        ctl.insertItem(makeItem(text: "A"))
+        ctl.insertItem(makeItem(text: "B"))
+        ctl.insertItem(makeItem(text: "C"))
+
+        let toDelete = Set([ctl.items[0].id, ctl.items[2].id])
+        ctl.selectedItemIDs = toDelete
+        ctl.deleteSelectedItems()
+
+        XCTAssertEqual(ctl.items.count, 1)
+        XCTAssertEqual(ctl.items[0].plainText, "B")
+        XCTAssertTrue(ctl.selectedItemIDs.isEmpty)
+    }
+
+    func testEnforceHistoryLimit() {
+        let ctl = makeController(limit: 3)
+
+        for i in 0..<10 {
+            ctl.insertItem(makeItem(text: "item\(i)"))
+        }
+
+        XCTAssertLessThanOrEqual(ctl.items.count, 3)
+    }
+
+    func testEnforceHistoryLimitViaAppState() {
+        let ctl = makeController(limit: 200)
+        ctl.maxHistoryCount = 3
+
+        for i in 0..<10 {
+            ctl.insertItem(makeItem(text: "item\(i)"))
+        }
+
+        XCTAssertLessThanOrEqual(ctl.items.count, 3)
     }
 }

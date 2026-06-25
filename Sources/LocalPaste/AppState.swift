@@ -3,176 +3,77 @@ import AppKit
 import UniformTypeIdentifiers
 
 /// Shared application state that flows through the environment.
+/// Owns services (monitor, hotkey, panel) and delegates data management
+/// to ClipboardDataController for testability.
 final class AppState: ObservableObject {
 
-    // MARK: - Published properties
+    // MARK: - Data controller
 
-    /// All clipboard history entries (pinned first, then newest).
+    /// All data management logic is delegated here.
+    let controller: ClipboardDataController
+
+    // MARK: - Published properties (synced with controller)
+
     @Published var items: [ClipboardItem] = []
 
-    /// Current search query (empty = show all)
-    @Published var searchQuery: String = ""
-
-    /// Maximum number of history entries to keep
-    @Published var maxHistoryCount: Int = 200 {
-        didSet { saveSettings(); enforceLimit() }
+    @Published var searchQuery: String = "" {
+        didSet { controller.searchQuery = searchQuery }
     }
 
-    /// Whether the user has opted in to launch at login
+    @Published var selectedItemID: UUID?
+
+    @Published var selectedItemIDs: Set<UUID> = [] {
+        didSet { controller.selectedItemIDs = selectedItemIDs }
+    }
+
+    @Published var pinGroups: [String] = ["General"] {
+        didSet { controller.pinGroups = pinGroups }
+    }
+
+    @Published var selectedPinGroup: String? = nil {
+        didSet { controller.selectedPinGroup = selectedPinGroup }
+    }
+
+    @Published var isSearchFocused = false {
+        didSet { controller.isSearchFocused = isSearchFocused }
+    }
+
+    @Published var isPopoverOpen = false {
+        didSet { controller.isPopoverOpen = isPopoverOpen }
+    }
+
+    @Published var maxHistoryCount: Int = 200 {
+        didSet { saveSettings(); controller.maxHistoryCount = maxHistoryCount }
+    }
+
     @Published var launchAtLogin: Bool = false {
         didSet { saveSettings() }
     }
 
-    /// The filtered list based on searchQuery
-    var filteredItems: [ClipboardItem] {
-        if searchQuery.isEmpty {
-            return items
-        }
-        return items.filter { item in
-            item.matches(query: searchQuery)
-        }
-    }
+    // MARK: - Computed properties (delegated to controller)
 
-    // MARK: - Selection (keyboard navigation)
-
-    /// The currently highlighted item ID, or nil if none.
-    @Published var selectedItemID: UUID?
-
-    /// True when the search field has keyboard focus — Space/arrows
-    /// should be passed through for typing, not interpreted as shortcuts.
-    @Published var isSearchFocused = false
-
-    /// True when a popover is open — typing should not activate search.
-    @Published var isPopoverOpen = false
-
-    /// Available pin groups (the user can create custom ones).
-    @Published var pinGroups: [String] = ["General"] {
-        didSet { savePinGroups() }
-    }
-
-    /// Items belonging to one of the pin groups.
-
-    /// Select the next item in `filteredItems`.
-    func selectNext() {
-        guard let current = selectedItemID else {
-            selectedItemID = filteredItems.first?.id
-            return
-        }
-        guard let idx = displayItems.firstIndex(where: { $0.id == current }),
-              idx + 1 < displayItems.count else { return }
-        selectedItemID = displayItems[idx + 1].id
-    }
-
-    /// Select the previous item in `filteredItems`.
-    func selectPrevious() {
-        guard let current = selectedItemID else {
-            selectedItemID = filteredItems.first?.id
-            return
-        }
-        guard let idx = displayItems.firstIndex(where: { $0.id == current }),
-              idx > 0 else { return }
-        selectedItemID = displayItems[idx - 1].id
-    }
-
-    /// Paste a specific item — full paste flow (copy to pasteboard,
-    /// hide panel, restore focus, send ⌘V).
-    func performPaste(_ item: ClipboardItem) {
-        selectedItemID = item.id
-        floatingPanel?.performPaste(appState: self)
-    }
-
-    /// Paste the currently selected item and dismiss the panel.
-    /// Note: the full paste flow (write clipboard + restore focus + ⌘V)
-    /// is performed by FloatingHistoryPanel.performPaste().
-    func pasteSelected() {
-        guard let id = selectedItemID,
-              let item = items.first(where: { $0.id == id }) else { return }
-        copyItemToPasteboard(item)
-        dismissFloatingPanel()
-    }
-
-    // MARK: - Multi-select & batch operations
-
-    /// IDs of items currently multi-selected (via Cmd/Shift+click in List).
-    @Published var selectedItemIDs: Set<UUID> = []
-
-    /// Paste the selected item as plain text only (⌘⇧V).
-    func pasteSelectedAsPlainText() {
-        guard let id = selectedItemID,
-              let item = items.first(where: { $0.id == id }),
-              let text = item.plainText else { return }
-
-        pasteboardManager.writeData([UTType.utf8PlainText.identifier: text.data(using: .utf8)!], order: [UTType.utf8PlainText.identifier])
-
-        if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            var refreshed = items.remove(at: idx)
-            refreshed.timestamp = Date()
-            insertSorted(refreshed)
-            saveToDisk()
-        }
-    }
-
-    // MARK: - Pin groups
-
-    /// Currently selected group filter ("All" or a group name). nil = "All".
-    @Published var selectedPinGroup: String? = nil
-
-    /// Filtered items respecting pin group selection.
-    var displayItems: [ClipboardItem] {
-        let base = searchQuery.isEmpty ? items : filteredItems
-        guard let group = selectedPinGroup else { return base }
-        return base.filter { $0.pinGroup == group }
-    }
-
-    private func savePinGroups() {
-        UserDefaults.standard.set(pinGroups, forKey: "pinGroups")
-    }
-
-    private func loadPinGroups() {
-        if let saved = UserDefaults.standard.stringArray(forKey: "pinGroups"), !saved.isEmpty {
-            pinGroups = saved
-        }
-    }
-
-    /// Delete all currently multi-selected items.
-    func deleteSelectedItems() {
-        items.removeAll { selectedItemIDs.contains($0.id) }
-        selectedItemIDs.removeAll()
-        saveToDisk()
-    }
-
-    /// Move items for drag-to-reorder.
-    func moveItems(from source: IndexSet, to destination: Int) {
-        items.move(fromOffsets: source, toOffset: destination)
-        saveToDisk()
-    }
-
-    /// Select the first item (called when panel opens).
-    func selectFirstItem() {
-        selectedItemID = displayItems.first?.id
-    }
-
-    /// Clear the selection (called when panel closes).
-    func clearSelection() {
-        selectedItemID = nil
-    }
+    var filteredItems: [ClipboardItem] { controller.filteredItems }
+    var displayItems: [ClipboardItem] { controller.displayItems }
 
     // MARK: - Services
 
     let pasteboardManager: PasteboardManager
     private let monitor: PasteboardMonitor
-    private let store: HistoryStore
-    private let hotKeyManager: HotKeyManager
+    let hotKeyManager: HotKeyManager
     private var floatingPanel: FloatingHistoryPanel?
 
     // MARK: - Init
 
+    /// Production init — creates real services.
     init() {
-        pasteboardManager = PasteboardManager()
-        store = HistoryStore()
-        monitor = PasteboardMonitor(pasteboardManager: pasteboardManager)
-        hotKeyManager = HotKeyManager()
-        items = store.load()
+        let store = HistoryStore()
+        self.pasteboardManager = PasteboardManager()
+        self.controller = ClipboardDataController(store: store, pasteboardManager: pasteboardManager)
+        self.monitor = PasteboardMonitor(pasteboardManager: pasteboardManager)
+        self.hotKeyManager = HotKeyManager()
+
+        syncFromController()
+
         monitor.delegate = self
         monitor.start()
 
@@ -183,38 +84,132 @@ final class AppState: ObservableObject {
         }
         _ = hotKeyManager.register()
 
-        // Expose globally for AppDelegate
         AppState.shared = self
+        loadSettings()
+    }
 
-        // Restore user preferences
+    /// Testing init — injects a fully configured controller.
+    /// Does NOT start the monitor, register hotkeys, or set up forwarding.
+    init(controller: ClipboardDataController) {
+        self.controller = controller
+        self.pasteboardManager = controller.pasteboardManager
+        self.monitor = PasteboardMonitor(pasteboardManager: pasteboardManager)
+        self.hotKeyManager = HotKeyManager()
+
+        syncFromController()
+
+        AppState.shared = self
         loadSettings()
     }
 
     static private(set) weak var shared: AppState?
 
-    // MARK: - Public methods
+    // MARK: - Sync
 
-    /// Insert a new item at the beginning of the list (pinned items come first).
+    /// Copy controller's current state to our @Published properties.
+    private func syncFromController() {
+        items = controller.items
+        searchQuery = controller.searchQuery
+        selectedItemID = controller.selectedItemID
+        selectedItemIDs = controller.selectedItemIDs
+        pinGroups = controller.pinGroups
+        selectedPinGroup = controller.selectedPinGroup
+        isSearchFocused = controller.isSearchFocused
+        isPopoverOpen = controller.isPopoverOpen
+        maxHistoryCount = controller.maxHistoryCount
+    }
+
+    // MARK: - Public methods (delegate to controller)
+
+    /// Every method that mutates controller state also syncs the relevant
+    /// published properties back so views observe changes immediately.
+
+    func selectNext() {
+        controller.selectNext()
+        selectedItemID = controller.selectedItemID
+    }
+
+    func selectPrevious() {
+        controller.selectPrevious()
+        selectedItemID = controller.selectedItemID
+    }
+
+    func selectFirstItem() {
+        controller.selectFirstItem()
+        selectedItemID = controller.selectedItemID
+    }
+
+    func clearSelection() {
+        controller.clearSelection()
+        selectedItemID = controller.selectedItemID
+    }
+
     func insertItem(_ item: ClipboardItem) {
-        // Deduplicate: if the exact same data already exists, remove the old entry
-        // and update its position.
-        if let existingIndex = items.firstIndex(where: { $0.data == item.data }) {
-            var updated = items[existingIndex]
-            updated.timestamp = item.timestamp
-            items.remove(at: existingIndex)
-            // Re-insert at the top of its (pinned/unpinned) section
-            insertSorted(updated)
-        } else {
-            insertSorted(item)
-        }
+        controller.insertItem(item)
+        items = controller.items
+    }
 
-        enforceLimit()
-        saveToDisk()
+    func deleteItem(_ item: ClipboardItem) {
+        controller.deleteItem(item)
+        items = controller.items
+    }
+
+    func clearHistory() {
+        controller.clearHistory()
+        items = controller.items
+    }
+
+    func deleteSelectedItems() {
+        controller.selectedItemIDs = selectedItemIDs
+        controller.deleteSelectedItems()
+        items = controller.items
+        selectedItemIDs = controller.selectedItemIDs
+    }
+
+    func moveItems(from source: IndexSet, to destination: Int) {
+        controller.moveItems(from: source, to: destination)
+        items = controller.items
+    }
+
+    func setPinGroup(for item: ClipboardItem, group: String?) {
+        controller.setPinGroup(for: item, group: group)
+        items = controller.items
+        pinGroups = controller.pinGroups
+    }
+
+    func deletePinGroup(_ group: String) {
+        controller.deletePinGroup(group)
+        pinGroups = controller.pinGroups
+        selectedPinGroup = controller.selectedPinGroup
+        items = controller.items
+    }
+
+    func copyItemToPasteboard(_ item: ClipboardItem) {
+        controller.copyItemToPasteboard(item)
+        items = controller.items
+    }
+
+    func pasteSelectedAsPlainText() {
+        controller.pasteSelectedAsPlainText()
+        items = controller.items
+    }
+
+    // MARK: - Paste flow (requires panel)
+
+    func performPaste(_ item: ClipboardItem) {
+        selectedItemID = item.id
+        floatingPanel?.performPaste(appState: self)
+    }
+
+    func pasteSelected() {
+        guard let id = selectedItemID,
+              let item = items.first(where: { $0.id == id }) else { return }
+        copyItemToPasteboard(item)
+        dismissFloatingPanel()
     }
 
     // MARK: - Floating panel (⌥⌘V)
 
-    /// Show or hide the floating history panel.
     func toggleFloatingPanel() {
         if floatingPanel == nil {
             floatingPanel = FloatingHistoryPanel(appState: self)
@@ -227,92 +222,12 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Dismiss the floating panel.
     func dismissFloatingPanel() {
         floatingPanel?.hideImmediately()
         clearSelection()
     }
 
-    #if DEBUG
-    /// Reset state for unit testing — stops monitor and clears storage.
-    func resetForTesting() {
-        monitor.stop()
-        items.removeAll()
-        selectedItemID = nil
-        selectedItemIDs.removeAll()
-        searchQuery = ""
-        store.save([])
-    }
-    #endif
-
-    /// Copy an item back to the system pasteboard.
-    func copyItemToPasteboard(_ item: ClipboardItem) {
-        pasteboardManager.copyToPasteboard(item)
-        // Move the item to the top of history
-        if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            var refreshed = items.remove(at: idx)
-            refreshed.timestamp = Date()
-            insertSorted(refreshed)
-            saveToDisk()
-        }
-    }
-
-    /// Delete a single item.
-    func deleteItem(_ item: ClipboardItem) {
-        items.removeAll { $0.id == item.id }
-        saveToDisk()
-    }
-
-    /// Clear the entire history.
-    func clearHistory() {
-        items.removeAll()
-        saveToDisk()
-    }
-
-    /// Toggle pin status.
-    /// Set or clear the pin group for an item.
-    func setPinGroup(for item: ClipboardItem, group: String?) {
-        if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            items[idx].pinGroup = group
-        }
-        if let g = group, !pinGroups.contains(g) {
-            pinGroups.append(g)
-        }
-        items = items.map { $0 }
-        saveToDisk()
-    }
-
-    /// Delete a pin group and clear it from all items.
-    func deletePinGroup(_ group: String) {
-        pinGroups.removeAll { $0 == group }
-        for idx in items.indices where items[idx].pinGroup == group {
-            items[idx].pinGroup = nil
-        }
-        if selectedPinGroup == group { selectedPinGroup = nil }
-        items = items.map { $0 }
-        saveToDisk()
-    }
-
-    // MARK: - Private helpers
-
-    private func insertSorted(_ item: ClipboardItem) {
-        items.append(item)
-        sortItems()
-    }
-
-    private func sortItems() {
-        items = items.sorted { $0.timestamp > $1.timestamp }
-    }
-
-    private func enforceLimit() {
-        if items.count > maxHistoryCount {
-            items = Array(items.prefix(maxHistoryCount))
-        }
-    }
-
-    private func saveToDisk() {
-        store.save(items, limit: maxHistoryCount)
-    }
+    // MARK: - Settings
 
     private func saveSettings() {
         UserDefaults.standard.set(maxHistoryCount, forKey: "maxHistoryCount")
@@ -323,7 +238,6 @@ final class AppState: ObservableObject {
         maxHistoryCount = UserDefaults.standard.integer(forKey: "maxHistoryCount")
         if maxHistoryCount == 0 { maxHistoryCount = 200 }
         launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
-        loadPinGroups()
     }
 
     deinit {

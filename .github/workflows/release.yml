@@ -29,6 +29,9 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" Info.plist
 
+      - name: Test
+        run: swift test
+
       - name: Build
         run: swift build -c release --disable-sandbox
 
