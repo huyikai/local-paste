@@ -474,11 +474,36 @@ private final class PreviewPanel: NSPanel {
 
     func showColor(color: NSColor) {
         resetContent()
-        let colorView = NSView(frame: scrollView.bounds)
-        colorView.wantsLayer = true
-        colorView.layer?.backgroundColor = color.cgColor
-        colorView.autoresizingMask = [.width, .height]
-        scrollView.documentView = colorView
+        let container = NSView(frame: scrollView.bounds)
+        container.wantsLayer = true
+        container.layer?.backgroundColor = color.cgColor
+        container.autoresizingMask = [.width, .height]
+
+        // Hex label centered
+        let label = NSTextField(labelWithString: "")
+        let r = Int(round(color.redComponent * 255))
+        let g = Int(round(color.greenComponent * 255))
+        let b = Int(round(color.blueComponent * 255))
+        let hex = String(format: "#%02X%02X%02X", r, g, b)
+        label.stringValue = hex
+        label.font = NSFont.monospacedSystemFont(ofSize: 32, weight: .medium)
+        label.alignment = .center
+        let l = color.redComponent * 0.299 + color.greenComponent * 0.587 + color.blueComponent * 0.114
+        label.textColor = l > 0.55 ? .black : .white
+        label.drawsBackground = false
+        label.isBezeled = false
+        label.isEditable = false
+        label.sizeToFit()
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        scrollView.documentView = container
+        self.title = hex
         makeKeyAndOrderFront(nil)
         installCloseMonitor()
     }
