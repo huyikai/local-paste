@@ -74,6 +74,13 @@ final class AppState: ObservableObject {
         selectedItemID = displayItems[idx - 1].id
     }
 
+    /// Paste a specific item — full paste flow (copy to pasteboard,
+    /// hide panel, restore focus, send ⌘V).
+    func performPaste(_ item: ClipboardItem) {
+        selectedItemID = item.id
+        floatingPanel?.performPaste(appState: self)
+    }
+
     /// Paste the currently selected item and dismiss the panel.
     /// Note: the full paste flow (write clipboard + restore focus + ⌘V)
     /// is performed by FloatingHistoryPanel.performPaste().

@@ -110,7 +110,7 @@ struct ItemRowView: View {
         )
         .foregroundColor(currentItem.displayColor != nil ? textColor : .primary)
         .onTapGesture { appState.selectedItemID = item.id }
-        .onTapGesture(count: 2) { appState.copyItemToPasteboard(item) }
+        .onTapGesture(count: 2) { appState.performPaste(item) }
         .contextMenu {
             Button(action: { appState.copyItemToPasteboard(item) }) {
                 Label(loc("context.paste"), systemImage: "doc.on.clipboard")

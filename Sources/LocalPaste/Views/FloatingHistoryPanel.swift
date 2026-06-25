@@ -170,7 +170,7 @@ final class FloatingHistoryPanel: NSPanel {
         }
     }
 
-    private func performPaste(appState: AppState) {
+    func performPaste(appState: AppState) {
         guard let id = appState.selectedItemID,
               let item = appState.items.first(where: { $0.id == id }) else { return }
 
