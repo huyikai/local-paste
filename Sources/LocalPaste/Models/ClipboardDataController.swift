@@ -36,9 +36,12 @@ final class ClipboardDataController: ObservableObject {
     /// Maximum history entries to keep.
     var maxHistoryCount: Int = 200
 
+    /// Days to retain history. 0 = keep forever.
+    var historyRetentionDays: Int = 0
+
     // MARK: - Dependencies
 
-    private let store: HistoryStore
+    let store: HistoryStore
     let pasteboardManager: PasteboardManager
 
     // MARK: - Init
@@ -103,6 +106,14 @@ final class ClipboardDataController: ObservableObject {
         saveToDisk()
     }
 
+    /// Remove items older than the given number of days.
+    func clearHistoryOlderThan(days: Int) {
+        guard days > 0 else { return }
+        let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
+        items = items.filter { $0.timestamp >= cutoff }
+        saveToDisk()
+    }
+
     /// Delete all currently multi-selected items.
     func deleteSelectedItems() {
         items.removeAll { selectedItemIDs.contains($0.id) }
@@ -156,6 +167,7 @@ final class ClipboardDataController: ObservableObject {
             pinGroups.append(g)
         }
         items = items.map { $0 }
+        savePinGroups()
         saveToDisk()
     }
 
@@ -166,7 +178,26 @@ final class ClipboardDataController: ObservableObject {
         }
         if selectedPinGroup == group { selectedPinGroup = nil }
         items = items.map { $0 }
+        savePinGroups()
         saveToDisk()
+    }
+
+    func renamePinGroup(from oldName: String, to newName: String) {
+        guard !newName.isEmpty, newName != oldName, !pinGroups.contains(newName) else { return }
+        guard let idx = pinGroups.firstIndex(of: oldName) else { return }
+        pinGroups[idx] = newName
+        for i in items.indices where items[i].pinGroup == oldName {
+            items[i].pinGroup = newName
+        }
+        if selectedPinGroup == oldName { selectedPinGroup = newName }
+        items = items.map { $0 }
+        savePinGroups()
+        saveToDisk()
+    }
+
+    func movePinGroup(from source: IndexSet, to destination: Int) {
+        pinGroups.move(fromOffsets: source, toOffset: destination)
+        savePinGroups()
     }
 
     // MARK: - Keyboard navigation
@@ -179,6 +210,7 @@ final class ClipboardDataController: ObservableObject {
     /// Clear the selection.
     func clearSelection() {
         selectedItemID = nil
+        selectedItemIDs.removeAll()
     }
 
     /// Select the next item in `displayItems`.
@@ -215,6 +247,12 @@ final class ClipboardDataController: ObservableObject {
     }
 
     private func enforceLimit() {
+        // Time-based pruning
+        if historyRetentionDays > 0 {
+            let cutoff = Date().addingTimeInterval(-Double(historyRetentionDays) * 86400)
+            items = items.filter { $0.timestamp >= cutoff }
+        }
+        // Count-based cap
         if items.count > maxHistoryCount {
             items = Array(items.prefix(maxHistoryCount))
         }
@@ -222,6 +260,10 @@ final class ClipboardDataController: ObservableObject {
 
     private func saveToDisk() {
         store.save(items, limit: maxHistoryCount)
+    }
+
+    private func savePinGroups() {
+        UserDefaults.standard.set(pinGroups, forKey: "pinGroups")
     }
 
     private func loadPinGroups() {

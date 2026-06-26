@@ -143,6 +143,85 @@ struct ClipboardItem: Identifiable, Hashable {
         return "text.alignleft"
     }
 
+    // MARK: - Detail metadata
+
+    /// Image format name extracted from the UTI key.
+    private var imageFormatName: String? {
+        if data.keys.contains(PasteboardTypes.png) { return "PNG" }
+        if data.keys.contains(PasteboardTypes.jpeg) { return "JPEG" }
+        if data.keys.contains(PasteboardTypes.gif) { return "GIF" }
+        if data.keys.contains(PasteboardTypes.tiff) { return "TIFF" }
+        if data.keys.contains(PasteboardTypes.pdf) { return "PDF" }
+        return nil
+    }
+
+    /// Image pixel size, if available.
+    private var imageSize: NSSize? {
+        guard let rep = image?.representations.first else { return nil }
+        // NSImageRep has pixelsWide/pixelsHigh which give actual pixel dimensions
+        let w = rep.pixelsWide > 0 ? rep.pixelsWide : Int(rep.size.width)
+        let h = rep.pixelsHigh > 0 ? rep.pixelsHigh : Int(rep.size.height)
+        guard w > 0, h > 0 else { return nil }
+        return NSSize(width: w, height: h)
+    }
+
+    /// Human-readable detail string for the item's content.
+    var detailInfo: String {
+        // Color items
+        if color != nil {
+            let hex = colorHex
+            let ns = color ?? displayColor
+            let r = Int(round((ns?.redComponent ?? 0) * 255))
+            let g = Int(round((ns?.greenComponent ?? 0) * 255))
+            let b = Int(round((ns?.blueComponent ?? 0) * 255))
+            return "\(hex)  ·  RGB(\(r), \(g), \(b))"
+        }
+        // Image items
+        if let img = image, let fmt = imageFormatName {
+            let sizeStr: String
+            if let px = imageSize {
+                sizeStr = "\(Int(px.width))×\(Int(px.height))"
+            } else {
+                sizeStr = "\(Int(img.size.width))×\(Int(img.size.height))"
+            }
+            let dataSize = data.compactMap { key, val in
+                PasteboardTypes.imageTypes.contains(key) ? val : nil
+            }.first?.count ?? 0
+            let formatter = ByteCountFormatter()
+            formatter.countStyle = .file
+            let size = formatter.string(fromByteCount: Int64(dataSize))
+            return "\(sizeStr)  ·  \(fmt)  ·  \(size)"
+        }
+        // File items
+        if let urls = fileURLs {
+            let count = urls.count
+            let totalSize = urls.reduce(0) { sum, url in
+                let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+                return sum + ((attrs?[.size] as? Int) ?? 0)
+            }
+            let formatter = ByteCountFormatter()
+            formatter.countStyle = .file
+            let size = formatter.string(fromByteCount: Int64(totalSize))
+            let firstName = urls.first?.lastPathComponent ?? ""
+            if count == 1 {
+                return "\(firstName)  ·  \(size)"
+            }
+            return loc("detail.files.count", count, size, firstName)
+        }
+        // Text items
+        if let text = plainText {
+            let chars = text.count
+            let words = text.split(whereSeparator: \.isWhitespace).count
+            let lines = text.split(separator: "\n").count
+            let formatter = ByteCountFormatter()
+            formatter.countStyle = .file
+            let size = formatter.string(fromByteCount: Int64(text.lengthOfBytes(using: .utf8)))
+            return loc("detail.text.info", chars, words, lines, size)
+        }
+        // Fallback
+        return loc("item.clipboard.data", data.count)
+    }
+
     // MARK: - Search
 
     func matches(query: String) -> Bool {

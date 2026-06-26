@@ -20,6 +20,7 @@ struct ItemRowView: View {
 
     var body: some View {
         let item = currentItem
+        let isSelected = appState.selectedItemIDs.contains(item.id)
 
         HStack(spacing: 10) {
             // App icon
@@ -27,13 +28,13 @@ struct ItemRowView: View {
                 if let icon = item.appIcon {
                     Image(nsImage: icon)
                         .resizable()
-                        .frame(width: 18, height: 18)
-                        .cornerRadius(4)
+                        .frame(width: 24, height: 24)
+                        .cornerRadius(5)
                 } else {
                     Image(systemName: item.contentTypeIcon)
-                        .font(.system(size: 14))
+                        .font(.system(size: 16))
                         .foregroundColor(.secondary)
-                        .frame(width: 18)
+                        .frame(width: 24)
                 }
             }
 
@@ -42,16 +43,16 @@ struct ItemRowView: View {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(maxHeight: 48)
+                        .frame(maxHeight: 44)
                         .cornerRadius(4)
                 } else if let attr = item.attributedPreview {
                     Text(attr)
-                        .lineLimit(3)
-                        .font(.system(size: 13))
+                        .lineLimit(2)
+                        .font(.system(size: 14))
                 } else {
                     Text(item.displayText)
-                        .lineLimit(2)
-                        .font(.system(size: 13))
+                        .lineLimit(1)
+                        .font(.system(size: 14))
                         .foregroundColor(.primary)
                 }
 
@@ -64,12 +65,17 @@ struct ItemRowView: View {
                     Text(item.timestamp, style: .time)
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
+                    Text(item.detailInfo)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                     if let group = item.pinGroup {
                         Text(group)
                             .font(.system(size: 9))
                             .foregroundColor(.accentColor)
-                            .padding(.horizontal, 4)
-                            .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.accentColor.opacity(0.15)))
                     }
                 }
             }
@@ -88,29 +94,47 @@ struct ItemRowView: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .contentShape(Rectangle())
+        .padding(.vertical, 6)
+        .frame(minHeight: 56)
         .background(
             Group {
                 if let swatch = item.displayColor {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 8)
                         .fill(Color(nsColor: swatch))
-                        .padding(.horizontal, 2)
-                        .padding(.vertical, 1)
                 }
             }
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 5)
+                .shadow(color: isSelected ? Color.accentColor.opacity(0.3) : .clear, radius: 3)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .foregroundColor(currentItem.displayColor != nil ? textColor : .primary)
-        .onTapGesture { appState.selectedItemID = item.id }
+        .onTapGesture {
+            appState.isSearchFocused = false
+            let event = NSApp.currentEvent
+            if event?.modifierFlags.contains(.command) == true {
+                // Cmd+click: toggle multi-select
+                if appState.selectedItemIDs.contains(item.id) {
+                    appState.selectedItemIDs.remove(item.id)
+                } else {
+                    appState.selectedItemIDs.insert(item.id)
+                }
+            } else {
+                // Normal click: single select
+                appState.selectedItemID = item.id
+                appState.selectedItemIDs = [item.id]
+            }
+        }
         .onTapGesture(count: 2) { appState.performPaste(item) }
         .contextMenu {
-            Button(action: { appState.copyItemToPasteboard(item) }) {
+            Button(action: { appState.performPaste(item) }) {
                 Label(loc("context.paste"), systemImage: "doc.on.clipboard")
             }
             if item.plainText != nil {
                 Button(action: {
-                    appState.selectedItemID = item.id
-                    appState.pasteSelectedAsPlainText()
+                    appState.performPasteAsPlainText(item)
                 }) {
                     Label(loc("context.paste.plain"), systemImage: "text.alignleft")
                 }
@@ -140,7 +164,7 @@ struct PinGroupPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("pin.popover.title")
+            Text(loc("pin.popover.title"))
                 .font(.headline)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)

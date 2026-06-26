@@ -34,6 +34,31 @@
     "zh-Hans": "最大历史记录：%lld 条",
     "ja": "最大履歴数：%lld 件"
   },
+  "settings.retention": {
+    "en": "History retention:",
+    "zh-Hans": "历史保留时间：",
+    "ja": "履歴保持期間："
+  },
+  "settings.retention.forever": {
+    "en": "Forever",
+    "zh-Hans": "永久",
+    "ja": "無期限"
+  },
+  "settings.retention.days": {
+    "en": "%lld day(s)",
+    "zh-Hans": "%lld 天",
+    "ja": "%lld 日"
+  },
+  "settings.delete.older.than": {
+    "en": "Delete older than:",
+    "zh-Hans": "删除早于：",
+    "ja": "次の期間より古いものを削除："
+  },
+  "settings.delete.older.than.confirm": {
+    "en": "Delete",
+    "zh-Hans": "删除",
+    "ja": "削除"
+  },
   "settings.storage.location": {
     "en": "Storage location:",
     "zh-Hans": "存储位置：",
@@ -124,10 +149,70 @@
     "zh-Hans": "暂无分组。固定一个项目即可创建分组。",
     "ja": "グループがありません。アイテムをピン留めしてグループを作成してください。"
   },
+  "settings.create.group": {
+    "en": "Create New Group",
+    "zh-Hans": "新建分组",
+    "ja": "新しいグループを作成"
+  },
   "delete.group": {
     "en": "Delete group",
     "zh-Hans": "删除分组",
     "ja": "グループを削除"
+  },
+  "rename.group": {
+    "en": "Rename group",
+    "zh-Hans": "重命名分组",
+    "ja": "グループ名を変更"
+  },
+  "rename.group.title": {
+    "en": "Rename Group",
+    "zh-Hans": "重命名分组",
+    "ja": "グループ名を変更"
+  },
+  "rename.group.placeholder": {
+    "en": "Group name",
+    "zh-Hans": "分组名称",
+    "ja": "グループ名"
+  },
+  "rename.group.confirm": {
+    "en": "Rename",
+    "zh-Hans": "重命名",
+    "ja": "変更"
+  },
+  "rename.group.message": {
+    "en": "Rename \"%@\"?",
+    "zh-Hans": "将「%@」重命名为？",
+    "ja": "「%@」の名前を変更しますか？"
+  },
+  "confirm.cancel": {
+    "en": "Cancel",
+    "zh-Hans": "取消",
+    "ja": "キャンセル"
+  },
+  "delete.group.confirm.title": {
+    "en": "Delete Group",
+    "zh-Hans": "删除分组",
+    "ja": "グループを削除"
+  },
+  "delete.group.confirm": {
+    "en": "Delete",
+    "zh-Hans": "删除",
+    "ja": "削除"
+  },
+  "delete.group.confirm.message": {
+    "en": "Delete \"%@\" and unpin all its items?",
+    "zh-Hans": "删除「%@」并取消所有项目的固定？",
+    "ja": "「%@」を削除し、すべてのアイテムのピンを外しますか？"
+  },
+  "move.group.up": {
+    "en": "Move up",
+    "zh-Hans": "上移",
+    "ja": "上に移動"
+  },
+  "move.group.down": {
+    "en": "Move down",
+    "zh-Hans": "下移",
+    "ja": "下に移動"
   },
   "section.global.hotkey": {
     "en": "Global Hotkey",
@@ -179,6 +264,56 @@
     "zh-Hans": "版本 1.0.6",
     "ja": "バージョン 1.0.6"
   },
+  "settings.version.format": {
+    "en": "Version %@ (%@)",
+    "zh-Hans": "版本 %@ (%@)",
+    "ja": "バージョン %@ (%@)"
+  },
+  "settings.check.updates": {
+    "en": "Check for Updates",
+    "zh-Hans": "检查更新",
+    "ja": "アップデートを確認"
+  },
+  "update.checking": {
+    "en": "Checking…",
+    "zh-Hans": "正在检查…",
+    "ja": "確認中…"
+  },
+  "update.up.to.date": {
+    "en": "You're up to date!",
+    "zh-Hans": "已是最新版本",
+    "ja": "最新バージョンです"
+  },
+  "update.found": {
+    "en": "New version %@ available!",
+    "zh-Hans": "发现新版本 %@！",
+    "ja": "新しいバージョン %@ があります！"
+  },
+  "update.found.message": {
+    "en": "A new version of LocalPaste is available. Download it now?",
+    "zh-Hans": "LocalPaste 有新版本可用。立即下载？",
+    "ja": "LocalPaste の新しいバージョンが利用可能です。ダウンロードしますか？"
+  },
+  "update.download": {
+    "en": "Download",
+    "zh-Hans": "下载",
+    "ja": "ダウンロード"
+  },
+  "update.later": {
+    "en": "Later",
+    "zh-Hans": "稍后",
+    "ja": "後で"
+  },
+  "settings.github": {
+    "en": "GitHub Repository",
+    "zh-Hans": "GitHub 仓库",
+    "ja": "GitHub リポジトリ"
+  },
+  "tab.about": {
+    "en": "About",
+    "zh-Hans": "关于",
+    "ja": "について"
+  },
   "settings.about.description": {
     "en": "A local clipboard history manager.\nAll data stays on your machine.",
     "zh-Hans": "本地剪贴板历史管理器。\n所有数据保留在您的设备上。",
@@ -199,6 +334,11 @@
     "zh-Hans": "清空",
     "ja": "消去"
   },
+  "paste.target": {
+    "en": "Paste to %@",
+    "zh-Hans": "粘贴到 %@",
+    "ja": "%@ にペースト"
+  },
   "filter.all": {
     "en": "All",
     "zh-Hans": "全部",
@@ -208,6 +348,16 @@
     "en": "%lld items",
     "zh-Hans": "%lld 个项目",
     "ja": "%lld 件"
+  },
+  "detail.text.info": {
+    "en": "%lld chars  ·  %lld words  ·  %lld lines  ·  %@",
+    "zh-Hans": "%lld 字符  ·  %lld 单词  ·  %lld 行  ·  %@",
+    "ja": "%lld 文字  ·  %lld 単語  ·  %lld 行  ·  %@"
+  },
+  "detail.files.count": {
+    "en": "%lld files  ·  %@  ·  %@…",
+    "zh-Hans": "%lld 个文件  ·  %@  ·  %@…",
+    "ja": "%lld ファイル  ·  %@  ·  %@…"
   },
   "delete.count": {
     "en": "Delete %lld",

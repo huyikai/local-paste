@@ -19,12 +19,12 @@ final class FloatingHistoryPanel: NSPanel {
     // MARK: - Init
 
     init(appState: AppState) {
-        let panelRect = NSRect(x: 0, y: 0, width: 420, height: 500)
+        let panelRect = NSRect(x: 0, y: 0, width: 420, height: 580)
 
         super.init(
             contentRect: panelRect,
             styleMask: [.nonactivatingPanel, .titled,
-                        .closable, .resizable],
+                        .fullSizeContentView, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -35,18 +35,41 @@ final class FloatingHistoryPanel: NSPanel {
         self.isFloatingPanel = true
         self.level = .floating
         self.titlebarAppearsTransparent = true
+        self.titleVisibility = .hidden
         self.isMovableByWindowBackground = true
         self.hidesOnDeactivate = false
-        self.title = loc("panel.title")
+        self.isOpaque = false
+        self.backgroundColor = .clear
+        self.hasShadow = true
 
         // Ensure it stays above other windows
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        // Content
+        // Content: visual effect view as glass root
         let contentView = HistoryPanelContentView().environmentObject(appState)
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = panelRect
-        self.contentView = hostingView
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = .clear
+
+        let visualEffect = NSVisualEffectView()
+        visualEffect.material = .hudWindow
+        visualEffect.state = .active
+        visualEffect.blendingMode = .behindWindow
+        visualEffect.wantsLayer = true
+        visualEffect.layer?.cornerRadius = 16
+        visualEffect.layer?.masksToBounds = true
+        visualEffect.translatesAutoresizingMaskIntoConstraints = false
+
+        visualEffect.addSubview(hostingView)
+        self.contentView = visualEffect
+
+        NSLayoutConstraint.activate([
+            hostingView.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: visualEffect.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor)
+        ])
 
         // Notifications
         NotificationCenter.default.addObserver(
@@ -110,25 +133,79 @@ final class FloatingHistoryPanel: NSPanel {
     private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
         guard let appState = appState else { return event }
 
-        // SEARCH MODE: keys go to search field
-        if appState.isSearchFocused || appState.isPopoverOpen {
-            if Int(event.keyCode) == 53 { // Esc
+        let keyCode = Int(event.keyCode)
+
+        // ESC always blurs any focus and closes
+        if keyCode == 53 {
+            if appState.isGroupFilterFocused {
+                appState.isGroupFilterFocused = false
+            } else if appState.isSearchFocused {
                 self.makeFirstResponder(nil)
                 appState.isSearchFocused = false
+            } else {
+                closeQuickLookIfNeeded()
+                hide()
+                appState.clearSelection()
+            }
+            return nil
+        }
+
+        // -- GROUP FILTER FOCUS MODE --
+        if appState.isGroupFilterFocused {
+            switch keyCode {
+            case 123: // Left arrow
+                if appState.focusedFilterIndex > 0 {
+                    appState.focusedFilterIndex -= 1
+                    appState.applyFilterFromFocus(keepFocus: true)
+                }
+                return nil
+            case 124: // Right arrow
+                let maxIndex = appState.pinGroups.count // 0 = All, then pinGroups
+                if appState.focusedFilterIndex < maxIndex {
+                    appState.focusedFilterIndex += 1
+                    appState.applyFilterFromFocus(keepFocus: true)
+                }
+                return nil
+            case 125: // Down arrow -> apply filter & go to list
+                appState.applyFilterFromFocus()
+                return nil
+            case 126: // Up arrow -> focus search
+                appState.clearSelection()
+                appState.isGroupFilterFocused = false
+                appState.isSearchFocused = true
+                return nil
+            default:
+                // Any other key activates search
+                appState.clearSelection()
+                appState.isGroupFilterFocused = false
+                appState.isSearchFocused = true
+                return event
+            }
+        }
+
+        // -- SEARCH FOCUS MODE --
+        if appState.isSearchFocused || appState.isPopoverOpen {
+            if keyCode == 125 && appState.isSearchFocused {
+                // Down arrow: search -> group filter
+                self.makeFirstResponder(nil)
+                appState.clearSelection()
+                appState.isSearchFocused = false
+                appState.focusedFilterIndex = 0
+                appState.isGroupFilterFocused = true
                 return nil
             }
+            // All other keys pass through to search field
             return event
         }
 
-        // NAVIGATION MODE: check if user started typing (not a nav key)
+        // -- NAVIGATION MODE (list focused) --
         let navKeys: Set<Int> = [36, 49, 53, 123, 124, 125, 126, 51, 117, 48]
-        if !navKeys.contains(Int(event.keyCode)) {
-            // User typed a printable character — activate search and pass through
+        if !navKeys.contains(keyCode) {
+            // User typed a printable character — activate search
+            appState.clearSelection()
             appState.isSearchFocused = true
             return event
         }
-
-        let keyCode = Int(event.keyCode)
 
         // ⌘⇧V — paste as plain text
         if keyCode == 9 && event.modifierFlags.contains([.command, .shift]) {
@@ -143,10 +220,17 @@ final class FloatingHistoryPanel: NSPanel {
             appState.selectNext()
             return nil
         case 126: // Up arrow
+            // At first item -> go to group filter
+            let firstId = appState.displayItems.first?.id
+            if appState.selectedItemID == nil || appState.selectedItemID == firstId {
+                appState.clearSelection()
+                appState.focusedFilterIndex = 0
+                appState.isGroupFilterFocused = true
+                return nil
+            }
             appState.selectPrevious()
             return nil
         case 36: // Enter / Return
-            // Defer to next run loop so keyboard monitor can clean up properly
             DispatchQueue.main.async { [weak self] in
                 self?.performPaste(appState: appState)
             }
@@ -159,11 +243,6 @@ final class FloatingHistoryPanel: NSPanel {
             } else {
                 openQuickLook(appState: appState)
             }
-            return nil
-        case 53: // Escape
-            closeQuickLookIfNeeded()
-            hide()
-            appState.clearSelection()
             return nil
         default:
             return event
@@ -191,6 +270,35 @@ final class FloatingHistoryPanel: NSPanel {
                 app.activate(options: .activateIgnoringOtherApps)
             }
             // Give it a moment to gain focus, then post Cmd+V
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                self.postCommandV()
+            }
+        }
+    }
+
+    func performPasteAsPlainText(appState: AppState) {
+        guard let id = appState.selectedItemID,
+              let item = appState.items.first(where: { $0.id == id }),
+              let text = item.plainText else { return }
+
+        // 1. Write plain text only to pasteboard
+        appState.controller.pasteboardManager.writeData(
+            [UTType.utf8PlainText.identifier: text.data(using: .utf8)!],
+            order: [UTType.utf8PlainText.identifier]
+        )
+
+        // 2. Save the app to restore focus to
+        let previousApp = previousAppBeforePanel
+
+        // 3. Hide panel immediately
+        hideImmediately()
+        appState.clearSelection()
+
+        // 4. Restore focus, then paste
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let app = previousApp {
+                app.activate(options: .activateIgnoringOtherApps)
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 self.postCommandV()
             }
@@ -308,6 +416,7 @@ final class FloatingHistoryPanel: NSPanel {
     func show() {
         // Save the currently active app so we can restore focus when pasting
         previousAppBeforePanel = NSWorkspace.shared.frontmostApplication
+        appState?.targetAppName = previousAppBeforePanel?.localizedName
 
         center()
         alphaValue = 0
@@ -325,8 +434,10 @@ final class FloatingHistoryPanel: NSPanel {
         // without stealing focus from the app the user was working in.
 
         // Select first item after a short delay to ensure UI is ready
+        // Also ensure search is not focused so keyboard navigation works
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
             self?.appState?.selectFirstItem()
+            self?.appState?.isSearchFocused = false
         }
     }
 
@@ -337,11 +448,13 @@ final class FloatingHistoryPanel: NSPanel {
 
     /// Hide the panel immediately without animation (used before paste).
     func hideImmediately() {
+        appState?.targetAppName = nil
         hide(animated: false)
     }
 
     private func hide(animated: Bool) {
         closeQuickLookIfNeeded()
+        appState?.targetAppName = nil
 
         if animated {
             NSAnimationContext.runAnimationGroup { ctx in
@@ -535,9 +648,11 @@ struct HistoryPanelContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Search bar
             SearchBarView(text: $searchText)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
                 .onChange(of: searchText) { newValue in
                     appState.searchQuery = newValue
                     appState.selectFirstItem()
@@ -546,11 +661,15 @@ struct HistoryPanelContentView: View {
             // Group filter
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    FilterChip(label: loc("filter.all"), selected: appState.selectedPinGroup == nil) {
+                    GlassFilterChip(label: loc("filter.all"),
+                                    selected: appState.selectedPinGroup == nil,
+                                    focused: appState.isGroupFilterFocused && appState.focusedFilterIndex == 0) {
                         appState.selectedPinGroup = nil
                     }
-                    ForEach(appState.pinGroups, id: \.self) { group in
-                        FilterChip(label: group, selected: appState.selectedPinGroup == group) {
+                    ForEach(Array(appState.pinGroups.enumerated()), id: \.element) { idx, group in
+                        GlassFilterChip(label: group,
+                                        selected: appState.selectedPinGroup == group,
+                                        focused: appState.isGroupFilterFocused && appState.focusedFilterIndex == idx + 1) {
                             if appState.selectedPinGroup == group {
                                 appState.selectedPinGroup = nil
                             } else {
@@ -559,34 +678,39 @@ struct HistoryPanelContentView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
+                .padding(.bottom, 4)
+            }
+            .padding(.horizontal, 12)
+            .background {
+                if appState.isGroupFilterFocused {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.accentColor.opacity(0.08))
+                        .padding(.horizontal, 4)
+                }
             }
 
-            Divider()
-
+            // List
             ScrollViewReader { proxy in
-                List(selection: $appState.selectedItemIDs) {
+                List {
                     ForEach(appState.displayItems) { item in
                         ItemRowView(item: item)
                             .id(item.id)
-                            .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+                            .listRowInsets(EdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 6))
                             .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
                     .onMove(perform: appState.moveItems)
                 }
                 .listStyle(.plain)
                 .environmentObject(appState)
+                .scrollContentBackground(.hidden)
                 .onChange(of: appState.selectedItemID) { newID in
                     guard let id = newID else { return }
-                    withAnimation {
-                        proxy.scrollTo(id, anchor: .center)
-                    }
+                    proxy.scrollTo(id, anchor: .center)
                     appState.selectedItemIDs = [id]
                 }
             }
-
-            Divider()
 
             // Footer
             HStack {
@@ -594,6 +718,12 @@ struct HistoryPanelContentView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
+                if let target = appState.targetAppName {
+                    Text(loc("paste.target", target))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
                 if appState.selectedItemIDs.count > 1 {
                     Button(action: { appState.deleteSelectedItems() }) {
                         Label(loc("delete.count", appState.selectedItemIDs.count), systemImage: "trash")
@@ -607,12 +737,9 @@ struct HistoryPanelContentView: View {
                 }
                 Spacer()
                 Button(action: {
-                    // Bring app to front so the Settings window appears above
-                    // other applications' windows
                     NSApp.activate(ignoringOtherApps: true)
-                    // Trigger Cmd+, which opens the Settings scene
                     let src = CGEventSource(stateID: .combinedSessionState)
-                    let down = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: true) // comma key
+                    let down = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: true)
                     down?.flags = .maskCommand
                     down?.post(tap: .cghidEventTap)
                     let up = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: false)
@@ -623,33 +750,55 @@ struct HistoryPanelContentView: View {
                 }
                 .buttonStyle(.plain)
                 .help(loc("settings.button.help"))
-                Button(loc("clear.button")) { appState.clearHistory() }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .disabled(appState.items.isEmpty)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+            .onTapGesture {
+                appState.isSearchFocused = false
+            }
         }
-        .frame(minWidth: 400, minHeight: 400)
     }
 }
 
-/// Small chip for group filter selection.
-struct FilterChip: View {
+/// Small chip for group filter selection with glass material.
+struct GlassFilterChip: View {
     let label: String
     let selected: Bool
+    let focused: Bool
     let action: () -> Void
+
+    init(label: String, selected: Bool, focused: Bool = false, action: @escaping () -> Void) {
+        self.label = label
+        self.selected = selected
+        self.focused = focused
+        self.action = action
+    }
 
     var body: some View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 11, weight: selected ? .semibold : .regular))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(selected ? Color.accentColor : Color(.controlBackgroundColor))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(
+                    Group {
+                        if selected {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.accentColor)
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(.regularMaterial)
+                        }
+                    }
+                )
                 .foregroundColor(selected ? .white : .secondary)
-                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(focused ? Color.accentColor.opacity(0.8) : Color.clear, lineWidth: 2.5)
+                )
         }
         .buttonStyle(.plain)
     }

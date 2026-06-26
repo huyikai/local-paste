@@ -38,6 +38,12 @@ final class AppState: ObservableObject {
         didSet { controller.isSearchFocused = isSearchFocused }
     }
 
+    /// True when keyboard focus is on the group filter row.
+    @Published var isGroupFilterFocused = false
+
+    /// Which filter chip is highlighted (0 = "All", 1+ = pinGroups index).
+    @Published var focusedFilterIndex = 0
+
     @Published var isPopoverOpen = false {
         didSet { controller.isPopoverOpen = isPopoverOpen }
     }
@@ -46,9 +52,17 @@ final class AppState: ObservableObject {
         didSet { saveSettings(); controller.maxHistoryCount = maxHistoryCount }
     }
 
+    /// Days to retain history. 0 = keep forever.
+    @Published var historyRetentionDays: Int = 0 {
+        didSet { saveSettings(); controller.historyRetentionDays = historyRetentionDays }
+    }
+
     @Published var launchAtLogin: Bool = false {
         didSet { saveSettings() }
     }
+
+    /// Name of the frontmost app before the panel appeared (paste target).
+    @Published var targetAppName: String? = nil
 
     // MARK: - Computed properties (delegated to controller)
 
@@ -61,6 +75,11 @@ final class AppState: ObservableObject {
     private let monitor: PasteboardMonitor
     let hotKeyManager: HotKeyManager
     private var floatingPanel: FloatingHistoryPanel?
+    let updateChecker = UpdateChecker()
+
+    @Published var updateCheckResult: UpdateCheckResult = .upToDate
+
+    private var updateTimer: Timer?
 
     // MARK: - Init
 
@@ -86,6 +105,59 @@ final class AppState: ObservableObject {
 
         AppState.shared = self
         loadSettings()
+        scheduleAutoUpdateCheck()
+    }
+
+    // MARK: - Update check
+
+    /// Perform a manual update check and update the published result.
+    @MainActor
+    func checkForUpdates() async {
+        updateCheckResult = .checking
+        updateChecker.lastCheckDate = Date()
+        let result = await updateChecker.check()
+        updateCheckResult = result
+    }
+
+    /// Schedule the first auto-check after a delay, then every 24 hours.
+    private func scheduleAutoUpdateCheck() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self = self else { return }
+            Task { @MainActor in
+                await self.performSilentCheck()
+            }
+        }
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            Task { @MainActor in
+                await self.performSilentCheck()
+            }
+        }
+    }
+
+    /// Silent check: only notify if check is due AND a new version is found.
+    @MainActor
+    private func performSilentCheck() async {
+        guard updateChecker.isCheckDue else { return }
+        let result = await updateChecker.check()
+        updateCheckResult = result
+
+        if case .newVersion(let version, let url) = result {
+            showUpdateNotification(version: version, url: url)
+        }
+    }
+
+    /// Show a native notification alert when a new version is found.
+    private func showUpdateNotification(version: String, url: URL) {
+        let alert = NSAlert()
+        alert.messageText = loc("update.found", version)
+        alert.informativeText = loc("update.found.message")
+        alert.addButton(withTitle: loc("update.download"))
+        alert.addButton(withTitle: loc("update.later"))
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     /// Testing init — injects a fully configured controller.
@@ -117,6 +189,7 @@ final class AppState: ObservableObject {
         isSearchFocused = controller.isSearchFocused
         isPopoverOpen = controller.isPopoverOpen
         maxHistoryCount = controller.maxHistoryCount
+        historyRetentionDays = controller.historyRetentionDays
     }
 
     // MARK: - Public methods (delegate to controller)
@@ -139,9 +212,27 @@ final class AppState: ObservableObject {
         selectedItemID = controller.selectedItemID
     }
 
+    /// Apply the filter at `focusedFilterIndex`. If `keepFocus` is false (default),
+    /// also clear group filter focus and move to the list.
+    func applyFilterFromFocus(keepFocus: Bool = false) {
+        if focusedFilterIndex == 0 {
+            selectedPinGroup = nil
+        } else {
+            let idx = focusedFilterIndex - 1
+            if idx < pinGroups.count {
+                selectedPinGroup = pinGroups[idx]
+            }
+        }
+        if !keepFocus {
+            isGroupFilterFocused = false
+            selectFirstItem()
+        }
+    }
+
     func clearSelection() {
         controller.clearSelection()
         selectedItemID = controller.selectedItemID
+        selectedItemIDs = controller.selectedItemIDs
     }
 
     func insertItem(_ item: ClipboardItem) {
@@ -157,6 +248,17 @@ final class AppState: ObservableObject {
     func clearHistory() {
         controller.clearHistory()
         items = controller.items
+    }
+
+    /// Remove items older than the given number of days.
+    func clearHistoryOlderThan(days: Int) {
+        controller.clearHistoryOlderThan(days: days)
+        items = controller.items
+    }
+
+    /// Human-readable storage size of the history file.
+    var historyStorageSize: String {
+        controller.store.storageSizeString
     }
 
     func deleteSelectedItems() {
@@ -184,6 +286,18 @@ final class AppState: ObservableObject {
         items = controller.items
     }
 
+    func renamePinGroup(from oldName: String, to newName: String) {
+        controller.renamePinGroup(from: oldName, to: newName)
+        pinGroups = controller.pinGroups
+        selectedPinGroup = controller.selectedPinGroup
+        items = controller.items
+    }
+
+    func movePinGroup(from source: IndexSet, to destination: Int) {
+        controller.movePinGroup(from: source, to: destination)
+        pinGroups = controller.pinGroups
+    }
+
     func copyItemToPasteboard(_ item: ClipboardItem) {
         controller.copyItemToPasteboard(item)
         items = controller.items
@@ -199,6 +313,11 @@ final class AppState: ObservableObject {
     func performPaste(_ item: ClipboardItem) {
         selectedItemID = item.id
         floatingPanel?.performPaste(appState: self)
+    }
+
+    func performPasteAsPlainText(_ item: ClipboardItem) {
+        selectedItemID = item.id
+        floatingPanel?.performPasteAsPlainText(appState: self)
     }
 
     func pasteSelected() {
@@ -231,16 +350,19 @@ final class AppState: ObservableObject {
 
     private func saveSettings() {
         UserDefaults.standard.set(maxHistoryCount, forKey: "maxHistoryCount")
+        UserDefaults.standard.set(historyRetentionDays, forKey: "historyRetentionDays")
         UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
     }
 
     private func loadSettings() {
         maxHistoryCount = UserDefaults.standard.integer(forKey: "maxHistoryCount")
         if maxHistoryCount == 0 { maxHistoryCount = 200 }
+        historyRetentionDays = UserDefaults.standard.integer(forKey: "historyRetentionDays")
         launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
     }
 
     deinit {
+        updateTimer?.invalidate()
         monitor.stop()
         hotKeyManager.unregister()
     }

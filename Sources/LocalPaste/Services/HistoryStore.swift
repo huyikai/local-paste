@@ -45,6 +45,20 @@ final class HistoryStore {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
+    /// The file size of the history database in bytes, or 0 if unavailable.
+    var storageSizeBytes: Int {
+        let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+        return (attrs?[.size] as? Int) ?? 0
+    }
+
+    /// Human-readable storage size string.
+    var storageSizeString: String {
+        let bytes = storageSizeBytes
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(bytes))
+    }
+
     // MARK: - Init
 
     /// Init with optional custom storage URL (for testing).
