@@ -10,11 +10,6 @@
 
 所有数据保存在你的机器上。无需订阅、无云端同步、无需 App Store。
 
-## 截图
-
-<!-- TODO: 添加截图 / GIF -->
-<!-- ![screenshot](screenshots/panel.png) -->
-
 ## 特性
 
 - **全格式支持** — 文本、富文本 (RTF/RTFD)、HTML、图片、PDF、文件路径、颜色
