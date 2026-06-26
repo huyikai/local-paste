@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.8] — 2026-06-26
+
+### 🐛 Fixes
+
+- Fix crash on launch: CI was not copying `LocalPaste_LocalPaste.bundle` into .app, causing `Bundle.module` resource lookup to fail
+
 ## [1.0.7] — 2026-06-26
 
 ### ✨ New Features
