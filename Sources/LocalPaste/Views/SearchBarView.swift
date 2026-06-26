@@ -6,10 +6,10 @@ struct SearchBarView: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
-                .font(.system(size: 13))
+                .font(.system(size: 14))
 
             TextField(loc("search.placeholder"), text: $text)
                 .textFieldStyle(.plain)
@@ -20,15 +20,15 @@ struct SearchBarView: View {
                 Button(action: { text = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(10)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .stroke(isFocused ? Color.accentColor.opacity(0.5) : Color.clear, lineWidth: 1.5)
         )
         .onChange(of: appState.isSearchFocused) { newValue in

@@ -88,14 +88,17 @@ final class PasteboardManager {
             return (nil, nil)
         }
         let name = app.localizedName
-        let iconData = app.icon.flatMap { icon in
-            let smallIcon = NSImage(size: NSSize(width: 16, height: 16))
-            smallIcon.lockFocus()
-            icon.draw(in: NSRect(x: 0, y: 0, width: 16, height: 16),
+        let iconData: Data? = {
+            guard let icon = app.icon else { return nil }
+            let resized = NSImage(size: NSSize(width: 64, height: 64))
+            resized.lockFocus()
+            icon.draw(in: NSRect(x: 0, y: 0, width: 64, height: 64),
                       from: .zero, operation: .copy, fraction: 1.0)
-            smallIcon.unlockFocus()
-            return smallIcon.tiffRepresentation
-        }
+            resized.unlockFocus()
+            guard let tiff = resized.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
+            return bitmap.representation(using: .png, properties: [:])
+        }()
         return (name, iconData)
     }
 }

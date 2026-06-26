@@ -28,13 +28,14 @@ struct ItemRowView: View {
                 if let icon = item.appIcon {
                     Image(nsImage: icon)
                         .resizable()
-                        .frame(width: 24, height: 24)
+                        .interpolation(.high)
+                        .frame(width: 28, height: 28)
                         .cornerRadius(5)
                 } else {
                     Image(systemName: item.contentTypeIcon)
-                        .font(.system(size: 16))
+                        .font(.system(size: 18))
                         .foregroundColor(.secondary)
-                        .frame(width: 24)
+                        .frame(width: 28)
                 }
             }
 
@@ -52,21 +53,19 @@ struct ItemRowView: View {
                 } else {
                     Text(item.displayText)
                         .lineLimit(1)
-                        .font(.system(size: 14))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 15))
                 }
 
                 HStack(spacing: 6) {
                     if let app = item.appName {
                         Text(app)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 11))
                     }
                     Text(item.timestamp, style: .time)
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                     Text(item.detailInfo)
-                        .font(.system(size: 9))
+                        .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                     if let group = item.pinGroup {
@@ -93,9 +92,9 @@ struct ItemRowView: View {
                     .environmentObject(appState)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(minHeight: 56)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(minHeight: 64)
         .background(
             Group {
                 if let swatch = item.displayColor {

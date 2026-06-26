@@ -19,7 +19,7 @@ final class FloatingHistoryPanel: NSPanel {
     // MARK: - Init
 
     init(appState: AppState) {
-        let panelRect = NSRect(x: 0, y: 0, width: 420, height: 580)
+        let panelRect = NSRect(x: 0, y: 0, width: 480, height: 640)
 
         super.init(
             contentRect: panelRect,
@@ -224,7 +224,13 @@ final class FloatingHistoryPanel: NSPanel {
             let firstId = appState.displayItems.first?.id
             if appState.selectedItemID == nil || appState.selectedItemID == firstId {
                 appState.clearSelection()
-                appState.focusedFilterIndex = 0
+                // Focus the currently active filter chip, not always "All"
+                if let active = appState.selectedPinGroup,
+                   let idx = appState.pinGroups.firstIndex(of: active) {
+                    appState.focusedFilterIndex = idx + 1
+                } else {
+                    appState.focusedFilterIndex = 0
+                }
                 appState.isGroupFilterFocused = true
                 return nil
             }
@@ -650,9 +656,9 @@ struct HistoryPanelContentView: View {
         VStack(spacing: 0) {
             // Search bar
             SearchBarView(text: $searchText)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 10)
                 .onChange(of: searchText) { newValue in
                     appState.searchQuery = newValue
                     appState.selectFirstItem()
@@ -660,7 +666,7 @@ struct HistoryPanelContentView: View {
 
             // Group filter
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     GlassFilterChip(label: loc("filter.all"),
                                     selected: appState.selectedPinGroup == nil,
                                     focused: appState.isGroupFilterFocused && appState.focusedFilterIndex == 0) {
@@ -678,15 +684,14 @@ struct HistoryPanelContentView: View {
                         }
                     }
                 }
-                .padding(.vertical, 4)
-                .padding(.bottom, 4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 12)
             .background {
                 if appState.isGroupFilterFocused {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color.accentColor.opacity(0.08))
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, 6)
                 }
             }
 
@@ -696,7 +701,7 @@ struct HistoryPanelContentView: View {
                     ForEach(appState.displayItems) { item in
                         ItemRowView(item: item)
                             .id(item.id)
-                            .listRowInsets(EdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 6))
+                            .listRowInsets(EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                     }
@@ -705,9 +710,15 @@ struct HistoryPanelContentView: View {
                 .listStyle(.plain)
                 .environmentObject(appState)
                 .scrollContentBackground(.hidden)
+                .onChange(of: appState.selectedPinGroup) { _ in
+                    guard let firstID = appState.displayItems.first?.id else { return }
+                    proxy.scrollTo(firstID, anchor: .top)
+                }
                 .onChange(of: appState.selectedItemID) { newID in
                     guard let id = newID else { return }
-                    proxy.scrollTo(id, anchor: .center)
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
                     appState.selectedItemIDs = [id]
                 }
             }
@@ -751,11 +762,11 @@ struct HistoryPanelContentView: View {
                 .buttonStyle(.plain)
                 .help(loc("settings.button.help"))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(.regularMaterial, in: Capsule())
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
             .onTapGesture {
                 appState.isSearchFocused = false
             }
@@ -780,9 +791,9 @@ struct GlassFilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 11, weight: selected ? .semibold : .regular))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
+                .font(.system(size: 12, weight: selected ? .semibold : .regular))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 7)
                 .background(
                     Group {
                         if selected {
