@@ -105,11 +105,22 @@ final class LocalizationService {
         guard !loaded else { return }
         loaded = true
 
-        guard let url = Bundle.module.url(forResource: "translations", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
+        // Try main bundle Resources first (macOS .app), then module bundle (SPM)
+        let url: URL? = {
+            if let u = Bundle.main.url(forResource: "translations", withExtension: "json") {
+                return u
+            }
+            if let u = Bundle.main.url(forResource: "translations", withExtension: "json",
+                                       subdirectory: "LocalPaste_LocalPaste.bundle/Contents/Resources") {
+                return u
+            }
+            return Bundle.module.url(forResource: "translations", withExtension: "json")
+        }()
+        guard let loadURL = url,
+              let data = try? Data(contentsOf: loadURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String: String]]
         else {
-            print("loc: failed to load translations.json from \(Bundle.module.bundlePath)")
+            print("loc: failed to load translations.json")
             return
         }
         translations = json
