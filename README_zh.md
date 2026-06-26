@@ -35,6 +35,7 @@
 
 ```bash
 brew tap huyikai/local-paste
+brew trust huyikai/local-paste
 brew install --cask localpaste
 ```
 

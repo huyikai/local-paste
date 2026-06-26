@@ -34,6 +34,7 @@ Monitor and search your clipboard history — all data stays on your machine. No
 
 ```bash
 brew tap huyikai/local-paste
+brew trust huyikai/local-paste
 brew install --cask localpaste
 ```
 
