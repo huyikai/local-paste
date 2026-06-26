@@ -112,7 +112,10 @@ git push origin v1.0.0
 ```
 
 GitHub Actions will build a universal DMG and create a release automatically.
-The Homebrew cask always points to the latest release — users just run `brew upgrade --cask localpaste`.
+
+### Homebrew cask
+
+The Homebrew cask (`localpaste.rb`) lives in the separate **[homebrew-local-paste](https://github.com/huyikai/homebrew-local-paste)** repository (required by `brew tap` convention). This project does **not** contain a `Casks/` directory. To update the cask, edit the file in `homebrew-local-paste`. The cask uses `version :latest` and `sha256 :no_check`, so it always points to the latest GitHub Release — users update via `brew upgrade --cask localpaste`.
 
 ## FAQ
 
