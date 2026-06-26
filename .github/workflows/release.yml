@@ -41,7 +41,7 @@ jobs:
           echo "Binary at: $BIN_PATH"
           mkdir -p LocalPaste.app/Contents/MacOS LocalPaste.app/Contents/Resources
           cp "$BIN_PATH/LocalPaste" LocalPaste.app/Contents/MacOS/
-          cp -R "$BIN_PATH/LocalPaste_LocalPaste.bundle" LocalPaste.app/Contents/MacOS/
+          cp -R "$BIN_PATH/LocalPaste_LocalPaste.bundle" LocalPaste.app/
           cp Info.plist LocalPaste.app/Contents/
           swift Scripts/gen-icon.swift LocalPaste.app/Contents/Resources/icon.png
           codesign --force --deep --sign - LocalPaste.app
