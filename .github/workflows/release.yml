@@ -44,7 +44,7 @@ jobs:
           cp -R "$BIN_PATH/LocalPaste_LocalPaste.bundle" LocalPaste.app/Contents/MacOS/
           cp Info.plist LocalPaste.app/Contents/
           swift Scripts/gen-icon.swift LocalPaste.app/Contents/Resources/icon.png
-          codesign --force --sign - LocalPaste.app
+          codesign --force --deep --sign - LocalPaste.app
 
       - name: Create DMG
         run: |
