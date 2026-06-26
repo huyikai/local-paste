@@ -33,10 +33,9 @@ Monitor and search your clipboard history — all data stays on your machine. No
 ### Homebrew (recommended)
 
 ```bash
-brew install --cask huyikai/local-paste/localpaste
+brew tap huyikai/local-paste
+brew install --cask localpaste
 ```
-
-> This installs via [Homebrew](https://brew.sh). The first run will add the `huyikai/local-paste` tap automatically.
 
 #### Update
 
@@ -49,6 +48,7 @@ brew upgrade --cask localpaste
 
 ```bash
 brew uninstall --cask localpaste
+brew untap huyikai/local-paste
 ```
 
 ### Manual download

@@ -34,10 +34,9 @@
 ### Homebrew（推荐）
 
 ```bash
-brew install --cask huyikai/local-paste/localpaste
+brew tap huyikai/local-paste
+brew install --cask localpaste
 ```
-
-> 通过 [Homebrew](https://brew.sh) 安装。首次运行时会自动添加 `huyikai/local-paste` tap。
 
 #### 更新
 
@@ -50,6 +49,7 @@ brew upgrade --cask localpaste
 
 ```bash
 brew uninstall --cask localpaste
+brew untap huyikai/local-paste
 ```
 
 ### 手动下载
