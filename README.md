@@ -10,11 +10,6 @@ A lightweight, local-only clipboard history manager for macOS.
 
 Monitor and search your clipboard history — all data stays on your machine. No subscriptions, no cloud, no App Store.
 
-## Screenshots
-
-<!-- TODO: add screenshots / GIF -->
-<!-- ![screenshot](screenshots/panel.png) -->
-
 ## Features
 
 - **All pasteboard types** — text, rich text (RTF/RTFD), HTML, images, PDF, file URLs, colors
