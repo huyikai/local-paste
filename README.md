@@ -13,6 +13,7 @@ Monitor and search your clipboard history — all data stays on your machine. No
 ## Features
 
 - **All pasteboard types** — text, rich text (RTF/RTFD), HTML, images, PDF, file URLs, colors
+- **Liquid Glass UI** — frosted glass panel with rounded corners 16, hidden title bar, all components styled with material backgrounds
 - **Menu bar app** — click the clipboard icon or press `⌥⌘V`
 - **Keyboard navigation** — `↑↓` to move, `Enter` to paste, `Space` to preview, `Esc` to close
 - **Type-to-search** — start typing to filter (no click needed)
