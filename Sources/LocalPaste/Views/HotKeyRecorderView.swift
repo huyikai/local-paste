@@ -88,12 +88,8 @@ struct HotKeyRecorderView: View {
                 return nil // consume but don't record
             }
 
-            // Clean up and callback
-            if let m = coordinator.monitor {
-                NSEvent.removeMonitor(m)
-                coordinator.monitor = nil
-            }
-            coordinator.isActive = false
+            // Clean up, reset UI state, and callback
+            stopRecording()
             onRecord(keyCode, carbonMods)
             return nil
         }

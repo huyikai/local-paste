@@ -1,6 +1,7 @@
 import XCTest
 @testable import LocalPaste
 import AppKit
+import Carbon
 import UniformTypeIdentifiers
 
 private func makeItem(data: [String: Data] = [:],
@@ -464,6 +465,98 @@ final class HotKeyManagerTests: XCTestCase {
             // unregistering again should be safe
             manager.unregister()
         }
+    }
+
+    // MARK: - currentDescription formatting
+
+    func testCurrentDescriptionDefault() {
+        defer { cleanupHotKeyDefaults() }
+        // Ensure clean slate
+        UserDefaults.standard.removeObject(forKey: "com.localpaste.hotKeyKeyCode")
+        UserDefaults.standard.removeObject(forKey: "com.localpaste.hotKeyModifiers")
+        let manager = HotKeyManager()
+        // Default is cmdKey | optionKey + kVK_ANSI_V → "⌘⌥V"
+        XCTAssertEqual(manager.currentDescription, "⌘⌥V")
+    }
+
+    func testCurrentDescriptionAllFourModifiers() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        let allMods = UInt32(cmdKey) | UInt32(optionKey) | UInt32(controlKey) | UInt32(shiftKey)
+        manager.save(keyCode: UInt32(kVK_ANSI_F), modifiers: allMods)
+        // Order: ⌘, ⌥, ⌃, ⇧, then "F"
+        XCTAssertEqual(manager.currentDescription, "⌘⌥⌃⇧F")
+    }
+
+    func testCurrentDescriptionSingleModifier() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        manager.save(keyCode: UInt32(kVK_Space), modifiers: UInt32(shiftKey))
+        XCTAssertEqual(manager.currentDescription, "⇧Space")
+    }
+
+    func testCurrentDescriptionFunctionKey() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        manager.save(keyCode: UInt32(kVK_F1), modifiers: UInt32(cmdKey))
+        XCTAssertEqual(manager.currentDescription, "⌘F1")
+    }
+
+    func testCurrentDescriptionArrowKey() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        manager.save(keyCode: UInt32(kVK_UpArrow), modifiers: UInt32(controlKey) | UInt32(optionKey))
+        XCTAssertEqual(manager.currentDescription, "⌥⌃↑")
+    }
+
+    func testCurrentDescriptionEscape() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        manager.save(keyCode: UInt32(kVK_Escape), modifiers: UInt32(cmdKey) | UInt32(shiftKey))
+        XCTAssertEqual(manager.currentDescription, "⌘⇧Esc")
+    }
+
+    // MARK: - Persistence (save / read-back)
+
+    func testSaveAndReadBackKeyCode() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        manager.save(keyCode: 99, modifiers: UInt32(cmdKey))
+        XCTAssertEqual(manager.savedKeyCode(), 99)
+    }
+
+    func testSaveAndReadBackModifiers() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        let mods = UInt32(cmdKey) | UInt32(controlKey) | UInt32(shiftKey)
+        manager.save(keyCode: UInt32(kVK_ANSI_X), modifiers: mods)
+        XCTAssertEqual(manager.savedModifiers(), mods)
+    }
+
+    func testSavedDefaultsWhenEmpty() {
+        defer { cleanupHotKeyDefaults() }
+        // Remove any saved values to ensure we get defaults
+        UserDefaults.standard.removeObject(forKey: "com.localpaste.hotKeyKeyCode")
+        UserDefaults.standard.removeObject(forKey: "com.localpaste.hotKeyModifiers")
+        let manager = HotKeyManager()
+        XCTAssertEqual(manager.savedKeyCode(), HotKeyManager.defaultKeyCode)
+        XCTAssertEqual(manager.savedModifiers(), HotKeyManager.defaultModifiers)
+    }
+
+    func testSaveThenReloadUpdatesCurrentDescription() {
+        defer { cleanupHotKeyDefaults() }
+        let manager = HotKeyManager()
+        manager.save(keyCode: UInt32(kVK_ANSI_C), modifiers: UInt32(cmdKey) | UInt32(optionKey))
+        _ = manager.reload()
+        XCTAssertEqual(manager.currentDescription, "⌘⌥C")
+    }
+
+    // MARK: - Helpers
+
+    /// Clean up UserDefaults keys set during persistence tests.
+    private func cleanupHotKeyDefaults() {
+        UserDefaults.standard.removeObject(forKey: "com.localpaste.hotKeyKeyCode")
+        UserDefaults.standard.removeObject(forKey: "com.localpaste.hotKeyModifiers")
     }
 }
 

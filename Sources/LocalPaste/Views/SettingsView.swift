@@ -11,6 +11,11 @@ struct SettingsView: View {
     @State private var newGroupName: String = ""
     @State private var deleteOlderThanDays: Int = 7
 
+    /// Tracks the current hotkey description so the UI updates immediately
+    /// after recording a new shortcut (since hotKeyManager.currentDescription
+    /// is a computed property SwiftUI can't observe).
+    @State private var hotKeyDescription = ""
+
     var body: some View {
         TabView {
             generalTab
@@ -313,10 +318,11 @@ struct SettingsView: View {
                     Text(loc("settings.show.hide"))
                     Spacer()
                     HotKeyRecorderView(
-                        currentDescription: appState.hotKeyManager.currentDescription,
+                        currentDescription: hotKeyDescription,
                         onRecord: { keyCode, modifiers in
                             appState.hotKeyManager.save(keyCode: keyCode, modifiers: modifiers)
                             appState.hotKeyManager.reload()
+                            hotKeyDescription = appState.hotKeyManager.currentDescription
                         }
                     )
                 }
@@ -352,6 +358,9 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            hotKeyDescription = appState.hotKeyManager.currentDescription
+        }
     }
 
     // MARK: - About
