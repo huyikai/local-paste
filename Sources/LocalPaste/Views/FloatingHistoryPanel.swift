@@ -33,6 +33,10 @@ final class FloatingHistoryPanel: NSPanel {
     private var previousAppBeforePanel: NSRunningApplication?
     /// True while our preview panel is open.
     private var isQuickLookOpen = false
+    /// Incremented on every show(); content view uses it as .id() so all
+    /// SwiftUI local state (search text, popovers) resets per invocation.
+    private var panelSessionID = UUID()
+    private var hostingView: NSHostingView<AnyView>?
 
     // MARK: - Init
 
@@ -63,9 +67,14 @@ final class FloatingHistoryPanel: NSPanel {
         // Ensure it stays above other windows
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        // Content: visual effect view as glass root
-        let contentView = HistoryPanelContentView().environmentObject(appState)
-        let hostingView = NSHostingView(rootView: contentView)
+        // Content: visual effect view as glass root. The session .id() makes
+        // SwiftUI treat every show() as a fresh view tree, dropping local
+        // @State (search text, popovers, etc.).
+        let contentView = HistoryPanelContentView()
+            .environmentObject(appState)
+            .id(panelSessionID)
+        let hostingView = NSHostingView(rootView: AnyView(contentView))
+        self.hostingView = hostingView
         hostingView.translatesAutoresizingMaskIntoConstraints = false
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = .clear
@@ -438,9 +447,25 @@ final class FloatingHistoryPanel: NSPanel {
 
     /// Show the panel at the center of the screen.
     func show() {
+        // New session: reset search/filter/selection state and rebuild the
+        // content view so local @State (search text etc.) drops too. Order
+        // matters: the first-item selection below must operate on the
+        // unfiltered list.
+        panelSessionID = UUID()
+        appState?.resetPanelSession()
+
         // Save the currently active app so we can restore focus when pasting
         previousAppBeforePanel = NSWorkspace.shared.frontmostApplication
         appState?.targetAppName = previousAppBeforePanel?.localizedName
+
+        // Push the new session ID so the view tree is rebuilt
+        if let appState = appState {
+            hostingView?.rootView = AnyView(
+                HistoryPanelContentView()
+                    .environmentObject(appState)
+                    .id(panelSessionID)
+            )
+        }
 
         center()
         alphaValue = 0

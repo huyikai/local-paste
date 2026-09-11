@@ -348,6 +348,18 @@ final class AppState: ObservableObject {
         clearSelection()
     }
 
+    /// Reset per-invocation session state: search query, group filter and
+    /// selection. Called when the panel is summoned so every appearance
+    /// starts from a clean slate (search box empty, filter back to "All").
+    func resetPanelSession() {
+        searchQuery = ""
+        selectedPinGroup = nil
+        isGroupFilterFocused = false
+        focusedFilterIndex = 0
+        isSearchFocused = false
+        clearSelection()
+    }
+
     // MARK: - Settings
 
     private func saveSettings() {

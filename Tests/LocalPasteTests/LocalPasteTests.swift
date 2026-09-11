@@ -699,6 +699,37 @@ struct Umbrella {
             #expect(appState.controller.items.isEmpty)
         }
 
+        /// Summoning the panel starts a new session: search text, group
+        /// filter, focus state and selection must all reset.
+        @Test func resetPanelSessionClearsSearchAndFilter() {
+            let appState = makeAppState()
+
+            appState.insertItem(makeItem(text: "alpha"))
+            appState.insertItem(makeItem(text: "beta", pinGroup: "Work"))
+
+            // Simulate a working session: search, filter, focus, selection
+            appState.searchQuery = "alp"
+            appState.selectedPinGroup = "Work"
+            appState.isSearchFocused = true
+            appState.isGroupFilterFocused = true
+            appState.focusedFilterIndex = 1
+            appState.selectFirstItem()
+            #expect(!appState.filteredItems.isEmpty)
+
+            appState.resetPanelSession()
+
+            #expect(appState.searchQuery == "")
+            #expect(appState.controller.searchQuery == "")
+            #expect(appState.selectedPinGroup == nil)
+            #expect(appState.controller.selectedPinGroup == nil)
+            #expect(!appState.isSearchFocused)
+            #expect(!appState.isGroupFilterFocused)
+            #expect(appState.focusedFilterIndex == 0)
+            #expect(appState.selectedItemID == nil)
+            // Full list visible again
+            #expect(appState.displayItems.count == 2)
+        }
+
         @Test func deleteItem() {
             let appState = makeAppState()
 
