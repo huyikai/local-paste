@@ -113,22 +113,27 @@ struct ItemRowView: View {
         // Transparent regions (right-side whitespace) must still hit the
         // tap gestures; without a content shape List swallows those clicks.
         .contentShape(Rectangle())
-        .onTapGesture {
-            appState.isSearchFocused = false
-            let event = NSApp.currentEvent
-            if event?.modifierFlags.contains(.command) == true {
-                // Cmd+click: toggle multi-select
-                if appState.selectedItemIDs.contains(item.id) {
-                    appState.selectedItemIDs.remove(item.id)
+        // SwiftUI's onTapGesture delays single-tap callbacks by the
+        // double-click window (~350ms) when a 2-tap gesture coexists.
+        // A native click recognizer fires immediately, so selection feels
+        // instant; double-click paste is handled by the overlay below.
+        .overlay(
+            ClickThroughView { event in
+                appState.isSearchFocused = false
+                if event.modifierFlags.contains(.command) {
+                    // Cmd+click: toggle multi-select
+                    if appState.selectedItemIDs.contains(item.id) {
+                        appState.selectedItemIDs.remove(item.id)
+                    } else {
+                        appState.selectedItemIDs.insert(item.id)
+                    }
                 } else {
-                    appState.selectedItemIDs.insert(item.id)
+                    // Normal click: single select
+                    appState.selectedItemID = item.id
+                    appState.selectedItemIDs = [item.id]
                 }
-            } else {
-                // Normal click: single select
-                appState.selectedItemID = item.id
-                appState.selectedItemIDs = [item.id]
             }
-        }
+        )
         .onTapGesture(count: 2) { appState.performPaste(item) }
         .contextMenu {
             Button(action: { appState.performPaste(item) }) {
@@ -227,5 +232,31 @@ struct PinGroupPicker: View {
         .frame(width: 200)
         .onAppear { appState.isPopoverOpen = true }
         .onDisappear { appState.isPopoverOpen = false }
+    }
+}
+
+/// Transparent overlay hosting a native NSClickGestureRecognizer so a
+/// single click fires immediately (no double-click detection delay).
+/// Double clicks also fire this once first — harmless, because the
+/// subsequent paste dismisses the panel.
+struct ClickThroughView: NSViewRepresentable {
+    let onClick: (NSEvent) -> Void
+
+    func makeNSView(context: Context) -> ClickCatcherView {
+        let view = ClickCatcherView()
+        view.onClick = onClick
+        return view
+    }
+
+    func updateNSView(_ view: ClickCatcherView, context: Context) {
+        view.onClick = onClick
+    }
+
+    final class ClickCatcherView: NSView {
+        var onClick: ((NSEvent) -> Void)?
+
+        override func mouseDown(with event: NSEvent) {
+            onClick?(event)
+        }
     }
 }
