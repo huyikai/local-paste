@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+### 🔧 Improvements
+
+- **Test suite migrated to Swift Testing** — 69 tests run with `make test` on machines that only have Command Line Tools (no full Xcode); suites are serialized because several tests share `NSPasteboard.general`
+- Refactor: extracted duplicated refresh-timestamp logic in `ClipboardDataController`
+- Refactor: merged `forceCapture` into `captureCurrentContent` (they were identical)
+- Refactor: replaced the `items = items.map { $0 }` publish hack with explicit element assignment
+- Refactor: named the floating panel's virtual key codes (was bare numbers 36/49/53…)
+
+### 🐛 Fixes
+
+- Fix status-bar badge subscription silently dropped depending on `@StateObject` vs `applicationDidFinishLaunching` init order; AppDelegate now holds a strong reference for the process lifetime
+
+## [1.0.15] — 2026-06-29
+
+### 🐛 Fixes
+
+- Fix settings-window hotkey recorder UI state not updating after recording a new shortcut
+- Fix translations.json placement in the .app bundle (CI packaging path corrected several times: copy to `Contents/Resources`, not the bundle root or .app root)
+
 ## [1.0.8] — 2026-06-26
 
 ### 🐛 Fixes
