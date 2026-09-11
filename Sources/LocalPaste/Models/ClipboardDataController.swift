@@ -151,12 +151,13 @@ final class ClipboardDataController: ObservableObject {
 
     func setPinGroup(for item: ClipboardItem, group: String?) {
         if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            items[idx].pinGroup = group
+            var updated = items[idx]
+            updated.pinGroup = group
+            items[idx] = updated
         }
         if let g = group, !pinGroups.contains(g) {
             pinGroups.append(g)
         }
-        items = items.map { $0 }
         savePinGroups()
         saveToDisk()
     }
@@ -164,10 +165,11 @@ final class ClipboardDataController: ObservableObject {
     func deletePinGroup(_ group: String) {
         pinGroups.removeAll { $0 == group }
         for idx in items.indices where items[idx].pinGroup == group {
-            items[idx].pinGroup = nil
+            var updated = items[idx]
+            updated.pinGroup = nil
+            items[idx] = updated
         }
         if selectedPinGroup == group { selectedPinGroup = nil }
-        items = items.map { $0 }
         savePinGroups()
         saveToDisk()
     }
@@ -177,10 +179,11 @@ final class ClipboardDataController: ObservableObject {
         guard let idx = pinGroups.firstIndex(of: oldName) else { return }
         pinGroups[idx] = newName
         for i in items.indices where items[i].pinGroup == oldName {
-            items[i].pinGroup = newName
+            var updated = items[i]
+            updated.pinGroup = newName
+            items[i] = updated
         }
         if selectedPinGroup == oldName { selectedPinGroup = newName }
-        items = items.map { $0 }
         savePinGroups()
         saveToDisk()
     }
