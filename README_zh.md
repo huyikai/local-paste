@@ -16,12 +16,12 @@
 - **Liquid Glass 界面** — 毛玻璃面板、圆角 16px、隐藏标题栏，组件均采用 material 质感背景
 - **菜单栏常驻** — 点击图标或按 `⌥⌘V` 呼出浮动面板
 - **键盘导航** — `↑↓` 移动高亮、`Enter` 粘贴、`Space` 预览、`Esc` 关闭
-- **打即搜** — 直接输入即可过滤，无需先点击搜索框
+- **打即搜** — 直接输入即可过滤，无需先点击搜索框；每次呼出面板都是全新会话（搜索与筛选自动重置）
 - **富文本预览** — HTML/RTF 在历史列表和预览窗中渲染样式
 - **分组收藏** — 右键或点击书签图标将条目收藏到自定义分组
 - **纯文本粘贴** — `⌘⇧V` 或右键菜单
 - **颜色色块展示** — hex 颜色值自动识别并以背景色块显示，Space 预览纯色大色块
-- **持久化存储** — `~/Library/Application Support/LocalPaste/` 下的 JSON 文件
+- **持久化存储** — `~/Library/Application Support/LocalPaste/`：`history.json` 存元数据与文本，大块二进制（图片等）外置到同级 `files/` 目录
 - **可配置上限** — 50–2000 条历史记录，支持开机自启
 - **100% 离线** — 无需联网、无数据收集、无账号
 
@@ -68,7 +68,7 @@ brew untap huyikai/local-paste
 | 上下导航 | `↑` `↓` |
 | 粘贴选中项 | `Enter` |
 | 预览选中项 | `Space`（切换开/关） |
-| 搜索历史 | 直接输入任意字符 |
+| 搜索历史 | 直接输入任意字符（每次呼出面板自动重置） |
 | 退出搜索 | `Esc` |
 | 关闭面板 | `Esc` 或点击面板外区域 |
 | Pin / Unpin | 点击书签按钮或右键 |
@@ -98,6 +98,7 @@ brew untap huyikai/local-paste
 ```bash
 make build           # 当前架构 Release 构建
 make build-universal # 通用二进制 (arm64 + x86_64)
+make test            # 运行测试（Swift Testing）
 make app             # 生成 .app 包
 make dmg             # .app → DMG 安装包
 make install         # .app → /Applications
@@ -135,8 +136,9 @@ GitHub Actions 会自动构建通用 DMG 并创建 Release。Homebrew cask 始�
 <details>
 <summary><strong>数据存在哪里？</strong></summary>
 
-<code>~/Library/Application Support/LocalPaste/</code> — 一个 JSON 文件。
-你可以备份它、删除它以重置历史，或软链接到云盘目录。
+<code>~/Library/Application Support/LocalPaste/</code> — <code>history.json</code>（元数据与文本）
+加一个 <code>files/</code> 目录（图片等大块二进制）。<br>
+备份或同步时请复制<strong>整个目录</strong> — 只拷 JSON 会丢图片数据。
 </details>
 
 ## License

@@ -16,12 +16,12 @@ macOS 用の軽量クリップボード履歴マネージャー。完全ロー�
 - **Liquid Glass UI** — すりガラスパネル、角丸 16px、非表示のタイトルバー、全コンポーネントがマテリアル風の背景
 - **メニューバー常駐** — アイコンをクリック、または `⌥⌘V` でフローティングパネルを表示
 - **キーボード操作** — `↑↓` で移動、`Enter` で貼り付け、`Space` でプレビュー、`Esc` で閉じる
-- **入力即検索** — 検索ボックスをクリックせずに、そのまま入力して絞り込み
+- **入力即検索** — 検索ボックスをクリックせずに、そのまま入力して絞り込み。パネルを表示するたびに新しいセッションで開始（検索・フィルターはリセット）
 - **リッチプレビュー** — HTML/RTF の書式を履歴リストとプレビューパネルで表示
 - **グループでブックマーク** — 右クリックまたはブックマークアイコンでアイテムをカスタムグループに保存
 - **プレーンテキスト貼り付け** — `⌘⇧V` または右クリックメニュー
 - **カラースウォッチ表示** — 16進カラー値を自動検出し、背景色で表示。Space で全画面カラースウォッチ
-- **永続保存** — `~/Library/Application Support/LocalPaste/` に JSON ファイルで保存
+- **永続保存** — `~/Library/Application Support/LocalPaste/` に保存：`history.json`（メタデータとテキスト）＋ 大きなバイナリ（画像など）は `files/` フォルダに保存
 - **設定可能な上限** — 50〜2000 件の履歴、ログイン時起動に対応
 - **100% オフライン** — インターネット不要、データ収集なし、アカウント不要
 
@@ -68,7 +68,7 @@ brew untap huyikai/local-paste
 | 項目を移動 | `↑` `↓` |
 | 選択項目を貼り付け | `Enter` |
 | プレビュー | `Space`（トグル） |
-| 履歴を検索 | 任意の文字を入力 |
+| 履歴を検索 | 任意の文字を入力（パネル表示のたびにリセット） |
 | 検索モードを終了 | `Esc` |
 | パネルを閉じる | `Esc` またはパネル外をクリック |
 | ブックマーク / 解除 | ブックマークボタンまたは右クリック |
@@ -98,6 +98,7 @@ brew untap huyikai/local-paste
 ```bash
 make build           # 現在のアーキテクチャでリリースビルド
 make build-universal # ユニバーサルバイナリ (arm64 + x86_64)
+make test            # テスト実行（Swift Testing）
 make app             # .app バンドルを生成
 make dmg             # .app → DMG インストーラー
 make install         # .app → /Applications
@@ -135,8 +136,9 @@ LocalPaste が有効になっているか確認してください。<br>
 <details>
 <summary><strong>データはどこに保存される？</strong></summary>
 
-<code>~/Library/Application Support/LocalPaste/</code> — 1つの JSON ファイルです。
-バックアップ、削除して履歴をリセット、またはクラウドフォルダにシンボリックリンクできます。
+<code>~/Library/Application Support/LocalPaste/</code> — <code>history.json</code>（メタデータとテキスト）と
+<code>files/</code> フォルダ（画像などの大きなバイナリ）です。<br>
+バックアップや同期の際は<strong>フォルダ全体</strong>をコピーしてください — JSON だけでは画像が失われます。
 </details>
 
 ## ライセンス

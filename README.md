@@ -16,11 +16,11 @@ Monitor and search your clipboard history — all data stays on your machine. No
 - **Liquid Glass UI** — frosted glass panel with rounded corners 16, hidden title bar, all components styled with material backgrounds
 - **Menu bar app** — click the clipboard icon or press `⌥⌘V`
 - **Keyboard navigation** — `↑↓` to move, `Enter` to paste, `Space` to preview, `Esc` to close
-- **Type-to-search** — start typing to filter (no click needed)
+- **Type-to-search** — start typing to filter (no click needed); each summon starts a fresh session (search & filter reset)
 - **Rich preview** — HTML/RTF rendered with formatting in history list and preview panel
 - **Pin items** — keep important clips at the top
 - **Paste as plain text** — `⌘⇧V` or right-click
-- **Persistent history** — JSON file in `~/Library/Application Support/LocalPaste/`
+- **Persistent history** — metadata in `~/Library/Application Support/LocalPaste/history.json`, large binary chunks (images etc.) stored as files in a sibling `files/` folder
 - **Configurable limit** — 50–2000 items, launch at login
 - **100% offline** — no internet, no tracking, no account
 
@@ -69,7 +69,7 @@ Open `/Applications/LocalPaste.app` — clipboard icon appears in menu bar.
 | Navigate items | `↑` `↓` |
 | Paste selected | `Enter` |
 | Preview item | `Space` (toggle) |
-| Search history | Type any character |
+| Search history | Type any character (resets each time the panel is summoned) |
 | Exit search mode | `Esc` |
 | Close panel | `Esc` or click outside |
 | Pin / Unpin | Pin button or right-click |
@@ -99,6 +99,7 @@ Open `/Applications/LocalPaste.app` — clipboard icon appears in menu bar.
 ```bash
 make build           # Native arch release build
 make build-universal # Universal binary (arm64 + x86_64)
+make test            # Run the test suite (Swift Testing)
 make app             # .app bundle
 make dmg             # .app → DMG installer
 make install         # .app → /Applications
@@ -140,8 +141,9 @@ Restart the app after granting permission.
 <details>
 <summary><strong>Where is the data stored?</strong></summary>
 
-<code>~/Library/Application Support/LocalPaste/</code> — a single JSON file.
-You can back it up, delete it to reset history, or symlink it to a cloud folder.
+<code>~/Library/Application Support/LocalPaste/</code> — a <code>history.json</code> file (metadata and text)
+plus a <code>files/</code> folder (large binary chunks like images).<br>
+To back up or sync, copy the <strong>whole folder</strong> — the JSON alone misses images.
 </details>
 
 ## License
