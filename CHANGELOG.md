@@ -1,10 +1,20 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.16] — 2026-09-11
 
-### 🔧 Improvements
+### ⚡️ Performance
 
-- **Test suite migrated to Swift Testing** — 69 tests run with `make test` on machines that only have Command Line Tools (no full Xcode); suites are serialized because several tests share `NSPasteboard.general`
+- **Fix copy lag with large clipboard content** — binary chunks ≥256KB (screenshots, images, Chrome page data) now persist to a `files/` directory instead of Base64 inside history.json; the JSON stays in the tens of KB and saving drops from hundreds of ms to milliseconds. Existing history auto-migrates on first launch (with a day-long `.pre-migration.bak` backup)
+
+### ✨ Improvements
+
+- **Fresh session on every panel summon** — search text, group filter and selection reset when the panel is summoned (Esc / click-outside / hotkey all behave the same); hiding keeps the query so an accidental double hotkey press doesn't lose work
+- **Whole list row is clickable** — clicks on the row's right-side whitespace now select/paste instead of being swallowed by the List
+- **Instant click selection** — removed the ~350ms single-click delay caused by SwiftUI's double-click detection; selection now responds immediately, double-click paste unchanged
+
+### 🔧 Internal
+
+- Test suite migrated to Swift Testing (76 tests, `make test` works without full Xcode; suites serialized because several tests share `NSPasteboard.general`)
 - Refactor: extracted duplicated refresh-timestamp logic in `ClipboardDataController`
 - Refactor: merged `forceCapture` into `captureCurrentContent` (they were identical)
 - Refactor: replaced the `items = items.map { $0 }` publish hack with explicit element assignment
