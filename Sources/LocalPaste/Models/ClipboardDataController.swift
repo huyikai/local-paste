@@ -132,12 +132,7 @@ final class ClipboardDataController: ObservableObject {
     /// Copy an item back to the system pasteboard and refresh its timestamp.
     func copyItemToPasteboard(_ item: ClipboardItem) {
         pasteboardManager.copyToPasteboard(item)
-        if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            var refreshed = items.remove(at: idx)
-            refreshed.timestamp = Date()
-            insertSorted(refreshed)
-            saveToDisk()
-        }
+        refreshTimestamp(of: item.id)
     }
 
     /// Paste the selected item as plain text only.
@@ -149,12 +144,7 @@ final class ClipboardDataController: ObservableObject {
         pasteboardManager.writeData([UTType.utf8PlainText.identifier: text.data(using: .utf8)!],
                                      order: [UTType.utf8PlainText.identifier])
 
-        if let idx = items.firstIndex(where: { $0.id == item.id }) {
-            var refreshed = items.remove(at: idx)
-            refreshed.timestamp = Date()
-            insertSorted(refreshed)
-            saveToDisk()
-        }
+        refreshTimestamp(of: item.id)
     }
 
     // MARK: - Pin groups
@@ -236,6 +226,16 @@ final class ClipboardDataController: ObservableObject {
     }
 
     // MARK: - Private helpers
+
+    /// Move the item to its timestamp-sorted position with a fresh timestamp
+    /// (used after the item is copied back to the pasteboard), then persist.
+    private func refreshTimestamp(of id: UUID) {
+        guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
+        var refreshed = items.remove(at: idx)
+        refreshed.timestamp = Date()
+        insertSorted(refreshed)
+        saveToDisk()
+    }
 
     private func insertSorted(_ item: ClipboardItem) {
         items.append(item)
