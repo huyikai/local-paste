@@ -26,32 +26,11 @@ final class PasteboardManager {
 
     // MARK: - Reading
 
-    func captureCurrentContent(appName: String? = nil) -> ClipboardItem? {
+    func captureCurrentContent() -> ClipboardItem? {
         let (dataMap, typeOrder) = pasteboard.readAllTypes()
         guard !dataMap.isEmpty else { return nil }
 
-        if dataMap.keys.allSatisfy({ $0.hasPrefix("com.localpaste.") }) {
-            return nil
-        }
-
-        let (name, iconData) = frontmostAppInfo()
-
-        return ClipboardItem(
-            id: UUID(),
-            timestamp: Date(),
-            data: dataMap,
-            typeOrder: typeOrder,
-            appName: appName ?? name,
-            appIconData: iconData,
-            pinGroup: nil
-        )
-    }
-
-    func forceCapture() -> ClipboardItem? {
-        let (dataMap, typeOrder) = pasteboard.readAllTypes()
-        guard !dataMap.isEmpty else { return nil }
-
-        // Also guard against our own writes
+        // Guard against our own writes
         if dataMap.keys.allSatisfy({ $0.hasPrefix("com.localpaste.") }) {
             return nil
         }

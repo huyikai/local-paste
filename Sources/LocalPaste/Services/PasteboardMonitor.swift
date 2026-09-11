@@ -42,7 +42,7 @@ final class PasteboardMonitor {
         isRunning = true
 
         // Do an initial capture to populate history
-        if let item = pasteboardManager.forceCapture() {
+        if let item = pasteboardManager.captureCurrentContent() {
             delegate?.pasteboardMonitor(self, didCapture: item)
         }
 
