@@ -347,6 +347,171 @@ struct Umbrella {
             #expect(imported != nil)
             #expect(imported?.count == 0)
         }
+
+        // MARK: Externalized chunk storage
+
+        /// A chunk at or above the threshold is written to files/ and
+        /// referenced from the JSON; round-tripping restores the bytes.
+        @Test func externalizedChunkRoundtrips() {
+            let fileURL = makeTempStoreURL("ext.json")
+            defer { removeTempStore(fileURL) }
+
+            let store = HistoryStore(maxItems: 10, storageURL: fileURL)
+            let bigChunk = Data(repeating: 0xAB, count: HistoryStore.externalizeThreshold + 1)
+            let smallChunk = Data("small".utf8)
+            let item = makeItem(data: [
+                UTType.png.identifier: bigChunk,
+                UTType.utf8PlainText.identifier: smallChunk,
+            ])
+
+            store.save([item])
+            let jsonSize = store.storageSizeBytes
+            #expect(jsonSize < HistoryStore.externalizeThreshold,
+                    "history.json should stay small when chunks are externalized")
+
+            let loaded = store.load()
+            #expect(loaded.count == 1)
+            #expect(loaded[0].data[UTType.png.identifier] == bigChunk)
+            #expect(loaded[0].data[UTType.utf8PlainText.identifier] == smallChunk)
+        }
+
+        /// Deleting an item removes its external chunk files.
+        @Test func externalizedFileRemovedWhenItemDropped() {
+            let fileURL = makeTempStoreURL("cleanup.json")
+            defer { removeTempStore(fileURL) }
+
+            let store = HistoryStore(maxItems: 10, storageURL: fileURL)
+            let bigChunk = Data(repeating: 0xCD, count: HistoryStore.externalizeThreshold + 1)
+            let item = makeItem(data: [UTType.png.identifier: bigChunk])
+
+            store.save([item])
+            let filesDir = fileURL.deletingLastPathComponent().appendingPathComponent("files")
+            let before = (try? FileManager.default.contentsOfDirectory(atPath: filesDir.path))?.count ?? 0
+            #expect(before == 1, "one external file after save")
+
+            // Save without the item -> file must be swept
+            store.save([])
+            let after = (try? FileManager.default.contentsOfDirectory(atPath: filesDir.path))?.count ?? 0
+            #expect(after == 0, "external file removed when item no longer kept")
+        }
+
+        /// Export inlines the data so the JSON is portable; importing a
+        /// legacy (all-inline) payload still works.
+        @Test func exportInlinesExternalChunks() {
+            let fileURL = makeTempStoreURL("portable.json")
+            defer { removeTempStore(fileURL) }
+
+            let store = HistoryStore(maxItems: 10, storageURL: fileURL)
+            let bigChunk = Data(repeating: 0xEF, count: HistoryStore.externalizeThreshold + 1)
+            let item = makeItem(data: [UTType.png.identifier: bigChunk])
+
+            store.save([item])
+
+            // Export should carry the full bytes inline (legacy-compatible)
+            guard let exported = store.exportJSON([item]) else {
+                Issue.record("export failed")
+                return
+            }
+            #expect(exported.count >= HistoryStore.externalizeThreshold,
+                    "exported JSON inlines the chunk bytes")
+
+            // And a fresh store importing that payload gets the bytes back
+            let target = makeTempStoreURL("target.json")
+            defer { removeTempStore(target) }
+            let targetStore = HistoryStore(maxItems: 10, storageURL: target)
+            let imported = targetStore.importJSON(from: exported)
+            #expect(imported?.first?.data[UTType.png.identifier] == bigChunk)
+        }
+
+        /// Migration from the legacy inline format keeps all data and
+        /// creates a backup.
+        @Test func migrateFromLegacyFormatPreservesData() {
+            let fileURL = makeTempStoreURL("legacy.json")
+            defer { removeTempStore(fileURL) }
+
+            // Simulate a legacy store: an all-inline JSON with a big image
+            let bigChunk = Data(repeating: 0x11, count: HistoryStore.externalizeThreshold + 1)
+            let merged = makeItem(data: [
+                UTType.png.identifier: bigChunk,
+                UTType.utf8PlainText.identifier: "legacy text".data(using: .utf8)!,
+            ], pinGroup: "Work")
+            let legacyStore = HistoryStore(maxItems: 10, storageURL: fileURL.deletingLastPathComponent().appendingPathComponent("seed.json"))
+            guard let legacyJSON = legacyStore.exportJSON([merged]) else {
+                Issue.record("seed export failed")
+                return
+            }
+            try? legacyJSON.write(to: fileURL)
+
+            // Loading performs the migration automatically
+            let store = HistoryStore(maxItems: 10, storageURL: fileURL)
+            _ = store.load()
+            let backupURL = fileURL.appendingPathExtension("pre-migration.bak")
+            #expect(FileManager.default.fileExists(atPath: backupURL.path))
+
+            // Data preserved, now externalized
+            let loaded = store.load()
+            #expect(loaded.count == 1)
+            #expect(loaded[0].data[UTType.png.identifier] == bigChunk)
+            #expect(loaded[0].plainText == "legacy text")
+            #expect(loaded[0].pinGroup == "Work")
+
+            // JSON shrank below the threshold
+            #expect(store.storageSizeBytes < HistoryStore.externalizeThreshold)
+
+            // Fresh backups are preserved (removed only after a day)
+            #expect(FileManager.default.fileExists(atPath: backupURL.path))
+        }
+
+        /// Regression: a legacy JSON WITHOUT the fileRefs key must decode
+        /// (previously the synthesized Codable init threw keyNotFound and
+        /// load() returned an empty list, risking data overwrite).
+        @Test func legacyJSONWithoutFileRefsKeyDecodes() {
+            let fileURL = makeTempStoreURL("no-file-refs.json")
+            defer { removeTempStore(fileURL) }
+
+            let bigChunk = Data(repeating: 0x22, count: HistoryStore.externalizeThreshold + 1)
+            // Hand-write the legacy format: no fileRefs field at all
+            let legacyPayload = """
+            [{
+                "id": "\(UUID().uuidString)",
+                "timestamp": \(Date(timeIntervalSince1970: 1000).timeIntervalSince1970),
+                "data": { "public.png": "\(Data(base64Encoded: bigChunk.base64EncodedString())!.base64EncodedString())" },
+                "typeOrder": ["public.png"],
+                "appName": null,
+                "appIconData": null,
+                "pinGroup": null
+            }]
+            """
+            try? legacyPayload.data(using: .utf8)!.write(to: fileURL)
+
+            let store = HistoryStore(maxItems: 10, storageURL: fileURL)
+            let loaded = store.load()
+
+            #expect(!store.loadFailed, "legacy file must decode")
+            #expect(loaded.count == 1)
+            #expect(loaded[0].data[UTType.png.identifier] == bigChunk,
+                    "chunk must survive the automatic migration")
+
+            // And the migrated file must NOT be overwritable-with-empty
+            #expect(store.storageSizeBytes > 0)
+        }
+
+        /// A corrupt history file blocks saving, so the broken file can
+        /// never be silently replaced by an empty history.
+        @Test func corruptFileBlocksSave() {
+            let fileURL = makeTempStoreURL("corrupt.json")
+            defer { removeTempStore(fileURL) }
+
+            try? "this is not json".data(using: .utf8)!.write(to: fileURL)
+
+            let store = HistoryStore(maxItems: 10, storageURL: fileURL)
+            let loaded = store.load()
+            #expect(loaded.isEmpty)
+            #expect(store.loadFailed, "decode failure must raise the flag")
+
+            store.save([makeItem(text: "should not persist")])
+            #expect(store.loadFailed, "save is refused while the load failure stands")
+        }
     }
 
     // MARK: - PasteboardManagerTests

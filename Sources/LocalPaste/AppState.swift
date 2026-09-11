@@ -91,6 +91,11 @@ final class AppState: ObservableObject {
         self.monitor = PasteboardMonitor(pasteboardManager: pasteboardManager)
         self.hotKeyManager = HotKeyManager()
 
+        // Deferred housekeeping: the previous launch's migration backup has
+        // proven itself by now; orphaned chunk files (crash leftovers) go too.
+        store.removeMigrationBackupIfPresent()
+        store.sweepOrphanedFiles(currentItems: controller.items)
+
         syncFromController()
 
         monitor.delegate = self
