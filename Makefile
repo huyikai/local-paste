@@ -4,7 +4,21 @@ RESOURCES = Sources/$(APP_NAME)/Resources
 BIN_PATH := $(shell swift build --show-bin-path -c release 2>/dev/null || echo ".build/release")
 VERSION := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist 2>/dev/null || echo "0.0.0")
 
-.PHONY: all build build-universal run run-background app dmg install icon clean version
+.PHONY: all build build-universal run run-background app dmg install icon clean version test
+
+# Swift Testing framework lives outside the SDK when using standalone
+# Command Line Tools (no Xcode). These flags make `make test` work there.
+# On machines with full Xcode the flags are unnecessary but harmless.
+CLT_TEST_FRAMEWORKS = /Library/Developer/CommandLineTools/Library/Developer/Frameworks
+CLT_TEST_USR_LIB = /Library/Developer/CommandLineTools/Library/Developer/usr/lib
+TEST_FLAGS = \
+	-Xswiftc -F -Xswiftc $(CLT_TEST_FRAMEWORKS) \
+	-Xlinker -F -Xlinker $(CLT_TEST_FRAMEWORKS) \
+	-Xlinker -rpath -Xlinker $(CLT_TEST_FRAMEWORKS) \
+	-Xlinker -rpath -Xlinker $(CLT_TEST_USR_LIB)
+
+test:
+	swift test --disable-sandbox $(TEST_FLAGS)
 
 all: build
 
