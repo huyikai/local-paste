@@ -1,7 +1,25 @@
 import SwiftUI
 import AppKit
 import WebKit
+import Carbon.HIToolbox
 import UniformTypeIdentifiers
+
+/// Virtual key codes used by the panel's keyboard routing
+/// (kVK_* constants from Carbon.HIToolbox.Events).
+private enum Key {
+    static let escape    = kVK_Escape
+    static let left      = kVK_LeftArrow
+    static let right     = kVK_RightArrow
+    static let down      = kVK_DownArrow
+    static let up        = kVK_UpArrow
+    static let `return`  = kVK_Return
+    static let space     = kVK_Space
+    static let delete    = kVK_Delete
+    static let forwardDelete = kVK_ForwardDelete
+    static let tab       = kVK_Tab
+    static let v         = kVK_ANSI_V
+    static let comma     = kVK_ANSI_Comma
+}
 
 /// A floating, always-on-top panel that shows clipboard history when the
 /// global hotkey (⌥⌘V) is pressed.
@@ -136,7 +154,7 @@ final class FloatingHistoryPanel: NSPanel {
         let keyCode = Int(event.keyCode)
 
         // ESC always blurs any focus and closes
-        if keyCode == 53 {
+        if keyCode == Key.escape {
             if appState.isGroupFilterFocused {
                 appState.isGroupFilterFocused = false
             } else if appState.isSearchFocused {
@@ -153,23 +171,23 @@ final class FloatingHistoryPanel: NSPanel {
         // -- GROUP FILTER FOCUS MODE --
         if appState.isGroupFilterFocused {
             switch keyCode {
-            case 123: // Left arrow
+            case Key.left:
                 if appState.focusedFilterIndex > 0 {
                     appState.focusedFilterIndex -= 1
                     appState.applyFilterFromFocus(keepFocus: true)
                 }
                 return nil
-            case 124: // Right arrow
+            case Key.right:
                 let maxIndex = appState.pinGroups.count // 0 = All, then pinGroups
                 if appState.focusedFilterIndex < maxIndex {
                     appState.focusedFilterIndex += 1
                     appState.applyFilterFromFocus(keepFocus: true)
                 }
                 return nil
-            case 125: // Down arrow -> apply filter & go to list
+            case Key.down: // apply filter & go to list
                 appState.applyFilterFromFocus()
                 return nil
-            case 126: // Up arrow -> focus search
+            case Key.up: // focus search
                 appState.clearSelection()
                 appState.isGroupFilterFocused = false
                 appState.isSearchFocused = true
@@ -185,7 +203,7 @@ final class FloatingHistoryPanel: NSPanel {
 
         // -- SEARCH FOCUS MODE --
         if appState.isSearchFocused || appState.isPopoverOpen {
-            if keyCode == 125 && appState.isSearchFocused {
+            if keyCode == Key.down && appState.isSearchFocused {
                 // Down arrow: search -> group filter
                 self.makeFirstResponder(nil)
                 appState.clearSelection()
@@ -199,7 +217,7 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         // -- NAVIGATION MODE (list focused) --
-        let navKeys: Set<Int> = [36, 49, 53, 123, 124, 125, 126, 51, 117, 48]
+        let navKeys: Set<Int> = [Key.return, Key.space, Key.escape, Key.left, Key.right, Key.down, Key.up, Key.delete, Key.forwardDelete, Key.tab]
         if !navKeys.contains(keyCode) {
             // User typed a printable character — activate search
             appState.clearSelection()
@@ -208,7 +226,7 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         // ⌘⇧V — paste as plain text
-        if keyCode == 9 && event.modifierFlags.contains([.command, .shift]) {
+        if keyCode == Key.v && event.modifierFlags.contains([.command, .shift]) {
             appState.pasteSelectedAsPlainText()
             hide()
             appState.clearSelection()
@@ -216,10 +234,10 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         switch keyCode {
-        case 125: // Down arrow
+        case Key.down:
             appState.selectNext()
             return nil
-        case 126: // Up arrow
+        case Key.up: // at first item -> go to group filter
             // At first item -> go to group filter
             let firstId = appState.displayItems.first?.id
             if appState.selectedItemID == nil || appState.selectedItemID == firstId {
@@ -236,12 +254,12 @@ final class FloatingHistoryPanel: NSPanel {
             }
             appState.selectPrevious()
             return nil
-        case 36: // Enter / Return
+        case Key.return:
             DispatchQueue.main.async { [weak self] in
                 self?.performPaste(appState: appState)
             }
             return nil
-        case 49: // Space — Quick Look / Preview
+        case Key.space: // Quick Look / Preview
             if let pp = previewPanel, pp.isVisible {
                 pp.close()
                 previewPanel = nil
@@ -321,7 +339,7 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         let source = CGEventSource(stateID: .combinedSessionState)
-        let vKey: CGKeyCode = 9
+        let vKey: CGKeyCode = CGKeyCode(Key.v)
 
         if let down = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true) {
             down.flags = [.maskCommand]
@@ -635,8 +653,7 @@ private final class PreviewPanel: NSPanel {
         closeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.isKeyWindow else { return event }
             switch Int(event.keyCode) {
-            case 49: self.close(); return nil
-            case 53: self.close(); return nil
+            case Key.space, Key.escape: self.close(); return nil
             default: return event
             }
         }
@@ -750,10 +767,10 @@ struct HistoryPanelContentView: View {
                 Button(action: {
                     NSApp.activate(ignoringOtherApps: true)
                     let src = CGEventSource(stateID: .combinedSessionState)
-                    let down = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: true)
+                    let down = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(Key.comma), keyDown: true)
                     down?.flags = .maskCommand
                     down?.post(tap: .cghidEventTap)
-                    let up = CGEvent(keyboardEventSource: src, virtualKey: 0x2B, keyDown: false)
+                    let up = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(Key.comma), keyDown: false)
                     up?.flags = .maskCommand
                     up?.post(tap: .cghidEventTap)
                 }) {
