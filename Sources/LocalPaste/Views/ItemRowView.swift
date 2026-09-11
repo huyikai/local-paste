@@ -110,6 +110,9 @@ struct ItemRowView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .foregroundColor(currentItem.displayColor != nil ? textColor : .primary)
+        // Transparent regions (right-side whitespace) must still hit the
+        // tap gestures; without a content shape List swallows those clicks.
+        .contentShape(Rectangle())
         .onTapGesture {
             appState.isSearchFocused = false
             let event = NSApp.currentEvent
