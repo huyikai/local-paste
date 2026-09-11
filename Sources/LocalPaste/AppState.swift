@@ -106,6 +106,7 @@ final class AppState: ObservableObject {
         AppState.shared = self
         loadSettings()
         scheduleAutoUpdateCheck()
+        NotificationCenter.default.post(name: .appStateDidBecomeAvailable, object: self)
     }
 
     // MARK: - Update check
@@ -172,6 +173,7 @@ final class AppState: ObservableObject {
 
         AppState.shared = self
         loadSettings()
+        NotificationCenter.default.post(name: .appStateDidBecomeAvailable, object: self)
     }
 
     static private(set) weak var shared: AppState?
