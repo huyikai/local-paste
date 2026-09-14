@@ -41,7 +41,7 @@ final class FloatingHistoryPanel: NSPanel {
     // MARK: - Init
 
     init(appState: AppState) {
-        let panelRect = NSRect(x: 0, y: 0, width: 480, height: 640)
+        let panelRect = NSRect(x: 0, y: 0, width: 600, height: 720)
 
         super.init(
             contentRect: panelRect,
@@ -468,26 +468,23 @@ final class FloatingHistoryPanel: NSPanel {
         }
 
         center()
-        alphaValue = 0
+        // Shift slightly below geometric center so the panel feels less
+        // crowded against the menu bar on a 14" laptop. NSWindow y-axis
+        // is flipped (origin = bottom-left of screen), so subtracting from
+        // origin.y moves the panel downward on screen.
+        setFrameOrigin(NSPoint(x: frame.origin.x, y: frame.origin.y - 60))
+        alphaValue = 1.0
         makeKeyAndOrderFront(nil)
 
-        // Fade in
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.15
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            self.animator().alphaValue = 1.0
-        }
-
         // NOTE: do NOT call NSApp.activate here — the panel uses
-        // .nonactivatingPanel style so it can receive keyboard events
+        // .nonactivatingPanel style so it receives keyboard events
         // without stealing focus from the app the user was working in.
 
-        // Select first item after a short delay to ensure UI is ready
-        // Also ensure search is not focused so keyboard navigation works
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            self?.appState?.selectFirstItem()
-            self?.appState?.isSearchFocused = false
-        }
+        // Select first item immediately. The previous 50ms async delay
+        // was a defensive wait for UI readiness, but main-thread dispatch
+        // already gives SwiftUI its setup pass — the delay just felt slow.
+        appState?.selectFirstItem()
+        appState?.isSearchFocused = false
     }
 
     /// Hide the panel (with fade animation).
