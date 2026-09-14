@@ -62,9 +62,23 @@ final class PasteboardManager {
 
     // MARK: - Helpers
 
+    /// Cache of the most recently seen frontmost app. Bundle ID is the
+    /// stable identity; if it hasn't changed since the last capture we
+    /// reuse the cached name + PNG so a 0.5 s capture poll doesn't redo
+    /// the NSImage rendering on every tick.
+    private struct FrontmostAppCache {
+        let bundleID: String
+        let name: String?
+        let iconData: Data?
+    }
+    private var frontmostCache: FrontmostAppCache?
+
     private func frontmostAppInfo() -> (String?, Data?) {
         guard let app = NSWorkspace.shared.frontmostApplication else {
             return (nil, nil)
+        }
+        if let cached = frontmostCache, cached.bundleID == app.bundleIdentifier {
+            return (cached.name, cached.iconData)
         }
         let name = app.localizedName
         let iconData: Data? = {
@@ -78,6 +92,8 @@ final class PasteboardManager {
                   let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
             return bitmap.representation(using: .png, properties: [:])
         }()
+        frontmostCache = FrontmostAppCache(bundleID: app.bundleIdentifier ?? "",
+                                            name: name, iconData: iconData)
         return (name, iconData)
     }
 }
