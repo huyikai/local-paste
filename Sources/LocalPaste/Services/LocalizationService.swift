@@ -173,7 +173,11 @@ final class LocalizationService {
 
     /// Launch a new instance of ourselves, then exit.
     private func restartApp() {
-        let execPath = CommandLine.arguments[0]
+        // Bundle.main.executableURL is the canonical, install-time path and
+        // works regardless of how the app was launched (open, Finder,
+        // Launch Services). Fall back to argv[0] for development runs
+        // where the bundle is not the canonical container.
+        let execPath = Bundle.main.executableURL?.path ?? CommandLine.arguments[0]
 
         let task = Process()
         task.executableURL = URL(fileURLWithPath: execPath)
