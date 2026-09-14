@@ -246,10 +246,17 @@ struct ClipboardItem: Identifiable, Hashable {
 // MARK: - NSColor hex parsing
 
 private extension NSColor {
+    /// Cache of canonicalised (lowercased, no #, trimmed) hex strings to
+    /// their NSColor. Bounded in practice by the palette users actually
+    /// copy; one-time wins for repeated hex strings (and matching strings
+    /// that differ only in case/whitespace).
+    nonisolated(unsafe) private static var hexCache: [String: NSColor] = [:]
+
     /// Parse hex color strings like "#FF6B35", "#fff", "FF6B35"
     static func fromHex(_ hex: String) -> NSColor? {
-        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if s.hasPrefix("#") { s.removeFirst() }
+        if let cached = hexCache[s] { return cached }
 
         let r, g, b: CGFloat
         switch s.count {
@@ -264,6 +271,8 @@ private extension NSColor {
         default:
             return nil
         }
-        return NSColor(red: r, green: g, blue: b, alpha: 1.0)
+        let color = NSColor(red: r, green: g, blue: b, alpha: 1.0)
+        hexCache[s] = color
+        return color
     }
 }
