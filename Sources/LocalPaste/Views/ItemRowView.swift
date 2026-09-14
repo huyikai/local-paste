@@ -29,13 +29,13 @@ struct ItemRowView: View {
                     Image(nsImage: icon)
                         .resizable()
                         .interpolation(.high)
-                        .frame(width: 28, height: 28)
-                        .cornerRadius(5)
+                        .frame(width: 36, height: 36)
+                        .cornerRadius(7)
                 } else {
                     Image(systemName: item.contentTypeIcon)
-                        .font(.system(size: 18))
+                        .font(.system(size: 22))
                         .foregroundColor(.secondary)
-                        .frame(width: 28)
+                        .frame(width: 36)
                 }
             }
 
@@ -59,7 +59,8 @@ struct ItemRowView: View {
                 HStack(spacing: 6) {
                     if let app = item.appName {
                         Text(app)
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
                     }
                     Text(item.timestamp, style: .time)
                         .font(.system(size: 11))
